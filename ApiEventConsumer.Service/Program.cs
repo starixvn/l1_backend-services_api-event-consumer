@@ -5,6 +5,7 @@ using Coravel;
 using Coravel.Events.Interfaces;
 using ApiEventConsumer.Events;
 using TinyHealthCheck;
+using ApiEventConsumer.Service.Subscribers;
 
 namespace ApiEventConsumer
 {
@@ -17,18 +18,18 @@ namespace ApiEventConsumer
             IHost host = CreateHostBuilder(args).Build();
             SentrySdk.CaptureMessage($"{DateTime.Now} - Start ApiEventConsumer", SentryLevel.Info);
 
-            host.Services.UseScheduler(scheduler =>
-            {
-                scheduler.Schedule<Invocable>().Cron(CronSettings);
-            }).OnError((exception) =>
-                  SentrySdk.CaptureException(exception)
-            );
+            //host.Services.UseScheduler(scheduler =>
+            //{
+            //    scheduler.Schedule<HighStakeInvocable>().Cron(CronSettings);
+            //}).OnError((exception) =>
+            //      SentrySdk.CaptureException(exception)
+            //);
 
-            IEventRegistration registration = host.Services.ConfigureEvents();
+            //IEventRegistration registration = host.Services.ConfigureEvents();
 
-            registration
-                .Register<HighStakeReceived>()
-                .Subscribe<HighStakeListener>();
+            //registration
+            //    .Register<HighStakeReceived>()
+            //    .Subscribe<HighStakeListener>();
 
             host.Run();
         }
@@ -47,13 +48,15 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    services.AddSchedulers();
-                    services.AddEventListeners();
+                    //services.AddSchedulers();
+                    //services.AddEventListeners();
 
-                    services.AddMongoDBServices(appSettings.SubcriberSettings);
+                    //services.AddMongoDBServices(appSettings.SubcriberSettings);
 
-                    services.AddProviderServices(appSettings.ProviderSettings);
-                    services.AddSubcriberServices(appSettings.SubcriberSettings);
+                    //services.AddProviderServices(appSettings.ProviderSettings);
+                    //services.AddSubcriberServices(appSettings.SubcriberSettings);
+
+                    services.AddHostedService<NatsService>();
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {

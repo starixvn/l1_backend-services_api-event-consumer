@@ -4,7 +4,7 @@ namespace ApiEventConsumer.Providers
 {
     public interface IProviderService
     {
-        Task<IEnumerable<HighStakeRecord>> GetApiEventConsumer();
+        Task<IEnumerable<HighStakeRecord>> GetHighStake();
     }
 
     public class ProviderService : IProviderService
@@ -18,8 +18,8 @@ namespace ApiEventConsumer.Providers
             this.context = context;
         }
 
-        public Task<IEnumerable<HighStakeRecord>> GetApiEventConsumer()
+        public Task<IEnumerable<HighStakeRecord>> GetHighStake()
         => context.QueryAsync<HighStakeRecord>
-                (settings.HighStakeStoredProcedure, commandType: CommandType.StoredProcedure);
+                (settings.StoredProcedure, commandType: CommandType.StoredProcedure);
     }
 }

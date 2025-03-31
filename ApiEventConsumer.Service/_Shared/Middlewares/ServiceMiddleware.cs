@@ -10,7 +10,7 @@ namespace ApiEventConsumer._Shared.Middlewares
         {
             services.AddScheduler();
 
-            services.AddTransient<Invocable>();
+            services.AddTransient<HighStakeInvocable>();
         }
 
         public static void AddEventListeners(this IServiceCollection services)

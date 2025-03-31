@@ -4,6 +4,6 @@
     {
         public string ConnectionString { get; set; }
 
-        public string HighStakeStoredProcedure { get; set; }
+        public string StoredProcedure { get; set; }
     }
 }

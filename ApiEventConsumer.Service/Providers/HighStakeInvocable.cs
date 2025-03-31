@@ -4,13 +4,13 @@ using ApiEventConsumer.Events;
 
 namespace ApiEventConsumer.Providers
 {
-    public class Invocable : IInvocable
+    public class HighStakeInvocable : IInvocable
     {
         private const string Source = "OW";
         private readonly IProviderService providerService;
         private readonly IDispatcher dispatcher;
 
-        public Invocable(IProviderService providerService, IDispatcher dispatcher)
+        public HighStakeInvocable(IProviderService providerService, IDispatcher dispatcher)
         {
             this.providerService = providerService;
             this.dispatcher = dispatcher;
@@ -18,7 +18,7 @@ namespace ApiEventConsumer.Providers
 
         public async Task Invoke()
         {
-            var ApiEventConsumers = await providerService.GetApiEventConsumer();           
+            var ApiEventConsumers = await providerService.GetHighStake();           
 
             await dispatcher.Broadcast(new HighStakeReceived(Source, ApiEventConsumers));
         }
