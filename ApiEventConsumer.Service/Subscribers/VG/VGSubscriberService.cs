@@ -8,9 +8,16 @@
     {
         private const string BaseCode = "USD";
 
-        public VGSubcriberService(IVGHighStakeDataAccess highStakeDataAccess, IVGGameConfigDataAccess gameConfigDataAccess, ISentryClient sentryClient)
-            : base(BaseCode, highStakeDataAccess, gameConfigDataAccess, sentryClient)
+        public VGSubcriberService(
+            ISentryClient sentryClient,
+            IConfiguration configuration)
+            : base(BaseCode, sentryClient, configuration)
         {
+        }
+
+        protected override string GetStreamSettingsPath()
+        {
+            return "AppSettings:SubcriberSettings:VG:StreamSettings";
         }
     }
 }

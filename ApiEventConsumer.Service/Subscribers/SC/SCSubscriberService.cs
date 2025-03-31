@@ -8,9 +8,16 @@
     {
         private const string BaseCode = "USD";
 
-        public SCSubscriberService(ISCHighStakeDataAccess highStakeDataAccess, ISCGameConfigDataAccess gameConfigDataAccess, ISentryClient sentryClient)
-            : base(BaseCode, highStakeDataAccess, gameConfigDataAccess, sentryClient)
+        public SCSubscriberService(
+            ISentryClient sentryClient,
+            IConfiguration configuration)
+            : base(BaseCode, sentryClient, configuration)
         {
+        }
+
+        protected override string GetStreamSettingsPath()
+        {
+            return "AppSettings:SubcriberSettings:SC:StreamSettings";
         }
     }
 }

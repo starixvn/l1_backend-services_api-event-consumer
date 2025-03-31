@@ -1,70 +1,122 @@
-﻿namespace ApiEventConsumer.Subscribers
+﻿using NATS.Client;
+using System.Text;
+using Microsoft.Extensions.Hosting;
+
+namespace ApiEventConsumer.Subscribers
 {
     public interface ISubscriberService
     {
-        Task InsertApiEventConsumers(string source, IEnumerable<Providers.HighStakeRecord> ApiEventConsumers);
+        void InitializeNatsConnection();
     }
 
-    public class SubscriberService : ISubscriberService
+    public abstract class SubscriberService : ISubscriberService, IHostedService
     {
         protected readonly string baseCode;
-        protected readonly IHighStakeDataAccess highStakeDataAccess;
-        protected readonly IGameConfigDataAccess gameConfigDataAccess;
         protected readonly ISentryClient sentryClient;
+        protected readonly IConfiguration _configuration;
+        
+        private IConnection? _connection;
+        private IAsyncSubscription? _betCreatedSub;
+        private IAsyncSubscription? _betSettledSub;
 
-        protected SubscriberService(string baseCode, IHighStakeDataAccess highStakeDataAccess, IGameConfigDataAccess gameConfigDataAccess, ISentryClient sentryClient)
+        protected SubscriberService(
+            string baseCode, 
+            ISentryClient sentryClient,
+            IConfiguration configuration)
         {
-            this.highStakeDataAccess = highStakeDataAccess;
-            this.gameConfigDataAccess = gameConfigDataAccess;
             this.baseCode = baseCode;
             this.sentryClient = sentryClient;
+            _configuration = configuration;
         }
 
-        public async Task InsertApiEventConsumers(string source, IEnumerable<Providers.HighStakeRecord> ApiEventConsumers)
+        protected abstract string GetStreamSettingsPath();
+
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (ApiEventConsumers.Any())
+            InitializeNatsConnection();
+            await Task.CompletedTask;
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            Dispose();
+            await Task.CompletedTask;
+        }
+
+        public void InitializeNatsConnection()
+        {
+            try
             {
-                var highStakeLog = new ApiEventConsumerLog
+                var streamSettings = _configuration.GetSection(GetStreamSettingsPath());
+                var isEnabled = streamSettings.GetValue<bool>("Enable");
+
+                if (!isEnabled) return;
+
+                var options = ConnectionFactory.GetDefaultOptions();
+                options.Url = streamSettings.GetValue<string>("Host");
+                options.DisconnectedEventHandler = (sender, args) =>
                 {
-                    Time = DateTimeOffset.UtcNow.DateTime,
-                    ExDate = ApiEventConsumers.First().HighStakeDate,
-                    Source = source,
-                    ExId = await GetNextId(),
-                    Code = ConvertCurrencyCodes(ApiEventConsumers.Where(ex => ex.BaseCode.Equals(baseCode, StringComparison.OrdinalIgnoreCase)))
+                    sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
                 };
 
-                if (highStakeLog.Code.Count > 0)
+                _connection = new ConnectionFactory().CreateConnection(options);
+
+                if (_connection.State != ConnState.CONNECTED)
                 {
-                    await highStakeDataAccess.Insert(highStakeLog);
-                    await gameConfigDataAccess.UpdateReloadHighStake();
+                    sentryClient.CaptureException(new Exception($"Failed to connect to NATS server. State: {_connection.State}"));
+                    return;
                 }
-                else
-                {
-                    sentryClient.CaptureMessage($"{DateTime.Now} - High stake got empty codes", SentryLevel.Fatal);
-                }
+
+                _betCreatedSub = _connection.SubscribeAsync($"api.bet.created", HandleBetCreated);
+                _betCreatedSub.Start();
+
+                _betSettledSub = _connection.SubscribeAsync($"api.bet.settled", HandleBetSettled);
+                _betSettledSub.Start();
             }
-        }
-
-        private async Task<int> GetNextId()
-        {
-            var latestHighStake = await highStakeDataAccess.GetLastHighStake();
-
-            return latestHighStake == null ? 1 : latestHighStake.ExId + 1;
-        }
-
-        private static Dictionary<string, decimal> ConvertCurrencyCodes(IEnumerable<Providers.HighStakeRecord> ApiEventConsumers)
-        {
-            var codes = new Dictionary<string, decimal>();
-
-            foreach (var rate in ApiEventConsumers)
+            catch (Exception ex)
             {
-                if (!string.IsNullOrWhiteSpace(rate.Code))
-                {
-                    codes.Add(rate.Code, rate.BaseRate);
-                }
+                sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
             }
+        }
 
-            return codes;
+        protected virtual void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
+        {
+            try
+            {
+                var message = Encoding.UTF8.GetString(args.Message.Data);
+                // Handle bet created message
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
+            }
+        }
+
+        protected virtual void HandleBetSettled(object? sender, MsgHandlerEventArgs args)
+        {
+            try
+            {
+                var message = Encoding.UTF8.GetString(args.Message.Data);
+                // Handle bet settled message
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception($"Error processing bet.settled message: {ex}"));
+            }
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                _betCreatedSub?.Unsubscribe();
+                _betSettledSub?.Unsubscribe();
+                _connection?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
+            }
         }
     }
 }

@@ -8,9 +8,16 @@
     {
         private const string BaseCode = "USD";
 
-        public SNSubscriberService(ISNHighStakeDataAccess highStakeDataAccess, ISNGameConfigDataAccess gameConfigDataAccess, ISentryClient sentryClient)
-            : base(BaseCode, highStakeDataAccess, gameConfigDataAccess, sentryClient)
+        public SNSubscriberService(
+            ISentryClient sentryClient,
+            IConfiguration configuration)
+            : base(BaseCode, sentryClient, configuration)
         {
+        }
+
+        protected override string GetStreamSettingsPath()
+        {
+            return "AppSettings:SubcriberSettings:SN:StreamSettings";
         }
     }
 }
