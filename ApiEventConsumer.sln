@@ -3,20 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiEventConsumer", "ApiEventConsumer\ApiEventConsumer.csproj", "{45E0D511-E64D-4D96-A5C6-B474CAA52A2D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiEventConsumer.Service", "ApiEventConsumer.Service\ApiEventConsumer.Service.csproj", "{C0D7D2D1-4445-45DA-8105-D3827678CEB2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C0D7D2D1-4445-45DA-8105-D3827678CEB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0D7D2D1-4445-45DA-8105-D3827678CEB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0D7D2D1-4445-45DA-8105-D3827678CEB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0D7D2D1-4445-45DA-8105-D3827678CEB2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{45E0D511-E64D-4D96-A5C6-B474CAA52A2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{45E0D511-E64D-4D96-A5C6-B474CAA52A2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{45E0D511-E64D-4D96-A5C6-B474CAA52A2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{45E0D511-E64D-4D96-A5C6-B474CAA52A2D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
