@@ -1,4 +1,7 @@
-﻿namespace ApiEventConsumer.Subscribers.SC
+﻿using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Service.Subscribers;
+
+namespace ApiEventConsumer.Subscribers.SC
 {
     public interface ISCSubscriberService : ISubscriberService
     {
@@ -10,8 +13,11 @@
 
         public SCSubscriberService(
             ISentryClient sentryClient,
-            IConfiguration configuration)
-            : base(BaseCode, sentryClient, configuration)
+            IConfiguration configuration,
+            ILogger<SubscriberService> _logger,
+            IChatBotApi chatBotApi,
+            IAppSettings appSettings)
+            : base(BaseCode, sentryClient, configuration, _logger, chatBotApi, appSettings)
         {
         }
 
