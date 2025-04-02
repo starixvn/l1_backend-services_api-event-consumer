@@ -27,9 +27,8 @@ namespace ApiEventConsumer.Service.Subscribers
         public int PlayerId { get; set; }
         public string SiteId { get; set; }
         public DateTime TimeStamp { get; set; }
-        //public int System { get; set; }
-        //public string Metadata { get; set; } = string.Empty;
-        //public string ObCustId { get; set; } = string.Empty;
+        public int System { get; set; }
+        public Dictionary<string, string> Metadata { get; set; }
     }
 
     public class ExchangeRate

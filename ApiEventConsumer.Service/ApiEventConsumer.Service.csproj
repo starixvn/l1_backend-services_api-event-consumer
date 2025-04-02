@@ -21,5 +21,13 @@
 	<PackageReference Include="Sentry" Version="5.4.0" />
 	<PackageReference Include="Sentry.Extensions.Logging" Version="4.2.1" />
 	<PackageReference Include="TinyHealthCheck" Version="0.0.9" />
+	<PackageReference Include="refit" Version="7.2.22" />
+	<PackageReference Include="Refit.Newtonsoft.Json" Version="7.2.22" />
+	<PackageReference Include="UAParser" Version="3.1.47" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApiEventConsumer.Core\ApiEventConsumer.Core.csproj" />
+    <ProjectReference Include="..\ApiEventConsumer.Database\ApiEventConsumer.Database.csproj" />
   </ItemGroup>
 </Project>

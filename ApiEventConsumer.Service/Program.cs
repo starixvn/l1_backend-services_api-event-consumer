@@ -4,6 +4,8 @@ using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.SC;
 using ApiEventConsumer.Subscribers.VG;
 using ApiEventConsumer.Subscribers.SN;
+using MongoDB.Driver;
+using static Dapper.SqlMapper;
 
 namespace ApiEventConsumer
 {
@@ -35,6 +37,11 @@ namespace ApiEventConsumer
                     services.AddEventListeners();
 
                     services.AddSubcriberServices(appSettings.SubcriberSettings);
+
+                    services.AddSingleton<IMongoClient>(sp =>
+                        new MongoClient(appSettings.DatabaseSettings.ConnectionString));
+                    services.AddSingleton<IMongoDatabase>(sp =>
+                        sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {

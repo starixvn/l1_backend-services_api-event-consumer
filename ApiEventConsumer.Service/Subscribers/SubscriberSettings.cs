@@ -14,6 +14,7 @@ namespace ApiEventConsumer.Subscribers
     public class SubcriberDatabase
     {
         public StreamSettings StreamSettings { get; set; }
+        public string SystemType { get; set; }
     }
 
     public class StreamSettings

@@ -1,0 +1,54 @@
+﻿using Newtonsoft.Json;
+
+namespace ApiEventConsumer.Core.Games
+{
+    public class GameSettings
+    {
+        public int GameId { get; set; }
+        public string GameName { get; set; }
+        public string DisplayName { get; set; }
+        public IEnumerable<string> BetChoices { get; set; }
+        public IEnumerable<string> Odds { get; set; }
+        public IEnumerable<string> OfferedSystem { get; set; }
+    }
+
+    public class GamesSettings
+    {
+        private static GamesSettings _instance;
+
+        public static GamesSettings GetGamesSettings()
+        {
+            if (_instance == null)
+            {
+                if (_instance == null)
+                {
+                    _instance = new GamesSettings();
+                }
+            }
+            return _instance;
+        }
+
+        public IEnumerable<GameSettings> Games { get; }
+
+        public GamesSettings()
+        {
+            Games = JsonConvert.DeserializeObject<IEnumerable<GameSettings>>(ReadSettingsFromFile());
+        }
+
+        private string ReadSettingsFromFile()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"game-settings.json");
+            return File.ReadAllText(path);
+        }
+
+        public GameSettings GetGameFromName(string gameName)
+        {
+            return Games.FirstOrDefault(game => game.GameName == gameName);
+        }
+
+        public GameSettings GetGameFromId(int gameId)
+        {
+            return Games.FirstOrDefault(game => game.GameId == gameId);
+        }
+    }
+}
