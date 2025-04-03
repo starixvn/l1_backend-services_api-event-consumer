@@ -1,4 +1,5 @@
-﻿using ApiEventConsumer._Shared.Configurations;
+﻿
+using ApiEventConsumer._Shared.Configurations;
 
 namespace ApiEventConsumer._Shared.Middlewares
 {

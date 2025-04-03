@@ -26,8 +26,8 @@ namespace ApiEventConsumer.Subscribers
             // Existing service registrations
             services.AddSingleton(settings);
             services.AddHostedService<SCSubscriberService>();
-            //services.AddHostedService<VGSubcriberService>();
-            //services.AddHostedService<SNSubscriberService>();
+            services.AddHostedService<VGSubcriberService>();
+            services.AddHostedService<SNSubscriberService>();
 
             // Repository registrations
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();

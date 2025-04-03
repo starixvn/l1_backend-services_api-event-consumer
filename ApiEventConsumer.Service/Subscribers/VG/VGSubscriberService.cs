@@ -5,7 +5,6 @@ using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
-using ApiEventConsumer.Service.Subscribers;
 
 namespace ApiEventConsumer.Subscribers.VG
 {
@@ -19,6 +18,7 @@ namespace ApiEventConsumer.Subscribers.VG
 
         public VGSubcriberService(
             ISentryClient sentryClient,
+            IChatBotApi chatBotApi,
             IConfiguration configuration,
             ILogger<SubscriberService> _logger,
             IGenericRepository<UserSessionEntity> usersessionRepository,
@@ -31,6 +31,7 @@ namespace ApiEventConsumer.Subscribers.VG
             IGeneralGameSettingService generalGameSettingService)
             : base(BaseCode,
                   sentryClient,
+                  chatBotApi,
                   configuration,
                   _logger,
                   usersessionRepository,
@@ -44,19 +45,14 @@ namespace ApiEventConsumer.Subscribers.VG
         {
         }
 
-        public override Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message)
+        protected override StreamSettings GetStreamSettingsPath(IAppSettings appSettings)
         {
-            throw new NotImplementedException();
+            return appSettings.SubcriberSettings.VG.StreamSettings;
         }
 
-        protected override string GetStreamSettingsPath()
+        protected override string GetSystemTypePath(IAppSettings appSettings)
         {
-            return "AppSettings:SubcriberSettings:VG:StreamSettings";
-        }
-
-        protected override string GetSystemTypePath()
-        {
-            return "AppSettings:SubcriberSettings:VG:SystemType";
+            return appSettings.SubcriberSettings.VG.SystemType;
         }
     }
 }

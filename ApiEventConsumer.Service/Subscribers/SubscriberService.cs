@@ -13,13 +13,20 @@ using ApiEventConsumer.Core.Enumeration;
 using ApiEventConsumer.Service.Service;
 using UAParser;
 using MongoDB.Driver;
+using ApiEventConsumer.Core.Models.ChatBot;
+using ApiEventConsumer.Core.Models.NatMessage;
 
 namespace ApiEventConsumer.Subscribers
 {
+    public interface IChatBotApi
+    {
+        [Post("/forwardwithtoken")]
+        Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message);
+    }
+
     public interface ISubscriberService
     {
         void InitializeNatsConnection();
-        Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message);
     }
 
     public abstract class SubscriberService : ISubscriberService, IHostedService
@@ -39,17 +46,20 @@ namespace ApiEventConsumer.Subscribers
         private IAsyncSubscription? _betCreatedSub;
         private IAsyncSubscription? _betSettledSub;
 
-        private const string HighStakeMessageTemplate = "**{0}** - {1} - {2} - {3} - {4} {5}";
+        private const string HighStakeMessageTemplate = "{0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 
         private readonly IAppSettings appSettings;
         private readonly IGeneralGameSettingService generalGameSettingService;
         private readonly IGameUserService gameUserService;
+        private readonly IChatBotApi chatBotApi;
+
 
         protected SubscriberService(
             string baseCode, 
             ISentryClient sentryClient,
+            IChatBotApi chatBotApi,
             IConfiguration configuration,
             ILogger<SubscriberService> logger,
             IGenericRepository<UserSessionEntity> usersessionRepository,
@@ -63,6 +73,7 @@ namespace ApiEventConsumer.Subscribers
         {
             this.baseCode = baseCode;
             this.sentryClient = sentryClient;
+            this.chatBotApi = chatBotApi;
             _configuration = configuration;
             _logger = logger;
             this.appSettings = appSettings;
@@ -76,8 +87,8 @@ namespace ApiEventConsumer.Subscribers
             uaParser = Parser.GetDefault();
         }
 
-        protected abstract string GetStreamSettingsPath();
-        protected abstract string GetSystemTypePath();
+        protected abstract StreamSettings GetStreamSettingsPath(IAppSettings appSettings);
+        protected abstract string GetSystemTypePath(IAppSettings appSettings);
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -95,13 +106,12 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                var streamSettings = _configuration.GetSection(GetStreamSettingsPath());
-                var isEnabled = streamSettings.GetValue<bool>("Enable");
+                var streamSettings = GetStreamSettingsPath(appSettings);
 
-                if (!isEnabled) return;
+                if (!streamSettings.Enable) return;
 
                 var options = ConnectionFactory.GetDefaultOptions();
-                options.Url = streamSettings.GetValue<string>("Host");
+                options.Url = streamSettings.Host;
                 options.DisconnectedEventHandler = (sender, args) =>
                 {
                     sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
@@ -124,9 +134,6 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        [Post("/forwardwithtoken")]
-        public abstract Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message);
-
         public async Task<ChatBotResult> NotifyHighStake(BetCreated bet)
         {
             try
@@ -147,7 +154,7 @@ namespace ApiEventConsumer.Subscribers
                 var playerDeviceExtraInformation = await GetDeviceInformation(bet.PlayerId.ToString());
                 msgBuilder.Append(string.Format(HighStakeMessageTemplate, "", charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
 
-                _ = Task.Run(() => ForwardMessage(
+                _ = Task.Run(() => chatBotApi.ForwardMessage(
                     appSettings.ChatBotApiSettings.Token,
                     appSettings.ChatBotApiSettings.ConversationIds.HighStake,
                     msgBuilder.ToString()));
@@ -246,7 +253,7 @@ namespace ApiEventConsumer.Subscribers
 
         private string GetVersionName(Versions version, Dictionary<string, string> metadata)
         {
-            var systemType = _configuration.GetSection(GetSystemTypePath()).ToString();
+            var systemType = _configuration.GetSection(GetSystemTypePath(appSettings)).ToString();
             var systemPrefix = GetSystemPrefixName(systemType);
 
             return version switch

@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson.Serialization.Attributes;
 
-namespace ApiEventConsumer.Service.Subscribers
+namespace ApiEventConsumer.Core.Models.NatMessage
 {
     public class BetCreated
     {

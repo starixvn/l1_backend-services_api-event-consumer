@@ -1,4 +1,4 @@
-namespace ApiEventConsumer.Service.Subscribers
+namespace ApiEventConsumer.Core.Models.ChatBot
 {
     public class ChatBotResult
     {

@@ -11,17 +11,14 @@ namespace ApiEventConsumer.Service.Service
 
     public class GameUserService : IGameUserService
     {
-        private readonly ISentryClient sentryClient;
 
         private readonly IGenericRepository<AccountInfoEntity> accountInfoRepository;
         private readonly IGenericRepository<AccountEntity> accountRepository;
 
         public GameUserService(
-            ISentryClient sentryClient,
             IGenericRepository<AccountInfoEntity> accountInfoRepository,
             IGenericRepository<AccountEntity> accountRepository)
         {
-            this.sentryClient = sentryClient;
             this.accountInfoRepository = accountInfoRepository;
             this.accountRepository = accountRepository;
         }

@@ -35,6 +35,7 @@ namespace ApiEventConsumer
 
                     services.AddSchedulers();
                     services.AddEventListeners();
+                    services.AddChatBotServices(appSettings);
 
                     services.AddSubcriberServices(appSettings.SubcriberSettings);
 

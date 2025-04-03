@@ -5,7 +5,6 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Service.Service;
-using ApiEventConsumer.Service.Subscribers;
 
 namespace ApiEventConsumer.Subscribers.SN
 {
@@ -19,6 +18,7 @@ namespace ApiEventConsumer.Subscribers.SN
 
         public SNSubscriberService(
             ISentryClient sentryClient,
+            IChatBotApi chatBotApi,
             IConfiguration configuration,
             ILogger<SubscriberService> _logger,
             IGenericRepository<UserSessionEntity> usersessionRepository,
@@ -29,35 +29,30 @@ namespace ApiEventConsumer.Subscribers.SN
             IAppSettings appSettings,
             IGameUserService gameUserService,
             IGeneralGameSettingService generalGameSettingService)
-            : base(BaseCode, 
-                  sentryClient, 
-                  configuration, 
-                  _logger, 
-                  usersessionRepository, 
-                  exchangeRateRepository, 
+            : base(BaseCode,
+                  sentryClient,
+                  chatBotApi,
+                  configuration,
+                  _logger,
+                  usersessionRepository,
+                  exchangeRateRepository,
                   currencyRepository,
                   userRepository,
-                  cache, 
-                  appSettings, 
-                  gameUserService, 
+                  cache,
+                  appSettings,
+                  gameUserService,
                   generalGameSettingService)
         {
         }
 
-        public override Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message)
+        protected override StreamSettings GetStreamSettingsPath(IAppSettings appSettings)
         {
-            throw new NotImplementedException();
+            return appSettings.SubcriberSettings.SN.StreamSettings;
         }
 
-        protected override string GetStreamSettingsPath()
+        protected override string GetSystemTypePath(IAppSettings appSettings)
         {
-            return "AppSettings:SubcriberSettings:SN:StreamSettings";
-        }
-
-
-        protected override string GetSystemTypePath()
-        {
-            return "AppSettings:SubcriberSettings:SN:SystemType";
+            return appSettings.SubcriberSettings.VG.SystemType;
         }
     }
 }
