@@ -29,6 +29,7 @@ namespace ApiEventConsumer
                     {
                         config.Port = appSettings.Port;
                         config.UrlPath = "/";
+                        config.Hostname = "*";
 
                         return config;
                     });
