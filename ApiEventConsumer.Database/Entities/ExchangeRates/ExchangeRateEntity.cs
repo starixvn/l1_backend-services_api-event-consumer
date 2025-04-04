@@ -7,15 +7,20 @@ namespace ApiEventConsumer.Database.Entities.ExchangeRates
     public class ExchangeRateEntity : Document
     {
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        [BsonElement("time")]
         public DateTime Time { get; set; }
 
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        [BsonElement("exDate")]
         public DateTime ExDate { get; set; }
 
+        [BsonElement("exId")]
         public int ExId { get; set; }
 
+        [BsonElement("source")]
         public string Source { get; set; }
 
+        [BsonElement("code")]
         public Dictionary<string, decimal> Code { get; set; }
     }
 }
