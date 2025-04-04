@@ -380,7 +380,14 @@ namespace ApiEventConsumer.Subscribers
             var user = cache.GetCache<AccountEntity>(userKey);
             if (user == default)
             {
-                user = await userRepository.FindOneAsync(u => u.PlayerId == ObCustId && u.OperatorId == operatorId);
+                var projectionUser = Builders<AccountEntity>.Projection
+                    .Include(x => x.PlayerId)
+                    .Include(x => x.OperatorId);
+
+                user = await userRepository.Collection()
+                    .Find(u => u.PlayerId == ObCustId && u.OperatorId == operatorId)
+                    .Project<AccountEntity>(projectionUser)
+                    .FirstOrDefaultAsync();
                 cache.SetCache(userKey, user, CacheExpireInMinutes);
             }
 
