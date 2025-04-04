@@ -114,23 +114,27 @@ namespace ApiEventConsumer.Subscribers
                 options.Url = streamSettings.Host;
                 options.DisconnectedEventHandler = (sender, args) =>
                 {
-                    sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
+                    // sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
+                    Console.WriteLine($"[ERROR] Disconnected from NATS server: {args.Error}");
                 };
 
                 _connection = new ConnectionFactory().CreateConnection(options);
 
                 if (_connection.State != ConnState.CONNECTED)
                 {
-                    sentryClient.CaptureException(new Exception($"Failed to connect to NATS server. State: {_connection.State}"));
+                    // sentryClient.CaptureException(new Exception($"Failed to connect to NATS server. State: {_connection.State}"));
+                    Console.WriteLine($"[ERROR] Failed to connect to NATS server. State: {_connection.State}");
                     return;
                 }
 
                 _betCreatedSub = _connection.SubscribeAsync($"api.bet.created", HandleBetCreated);
                 _betCreatedSub.Start();
+                Console.WriteLine("[INFO] Successfully subscribed to api.bet.created");
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
+                // sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
+                Console.WriteLine($"[ERROR] Critical error in NATS initialization: {ex}");
             }
         }
 
@@ -163,7 +167,8 @@ namespace ApiEventConsumer.Subscribers
             }
             catch (Exception e)
             {
-                sentryClient.CaptureException(e);
+                // sentryClient.CaptureException(e);
+                Console.WriteLine($"[ERROR] Error processing high stake notification: {e}");
                 return await Task.FromResult(new ChatBotResult());
             }
         }
@@ -178,7 +183,8 @@ namespace ApiEventConsumer.Subscribers
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
+                // sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
+                Console.WriteLine($"[ERROR] Error disposing NATS connections: {ex}");
             }
         }
 
@@ -191,12 +197,14 @@ namespace ApiEventConsumer.Subscribers
                 
                 if (betCreated != null)
                 {
+                    Console.WriteLine($"[INFO] Processing bet created: GameRoundId={betCreated.GameRoundId}, Amount={betCreated.Amount}");
                     await NotifyHighStake(betCreated);
                 }
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
+                // sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
+                Console.WriteLine($"[ERROR] Error processing bet.created message: {ex}");
             }
         }
 
@@ -229,7 +237,8 @@ namespace ApiEventConsumer.Subscribers
             }
             catch (Exception e)
             {
-                sentryClient.CaptureException(e);
+                // sentryClient.CaptureException(e);
+                Console.WriteLine($"[ERROR] Error calculating amount on base currency: {e}");
                 return (double)bet.Amount;
             }
         }
@@ -329,11 +338,14 @@ namespace ApiEventConsumer.Subscribers
                     .Project<UserSessionEntity>(projectionUserSession)
                     .SortByDescending(x => x.RecheckInTime)
                     .FirstOrDefaultAsync();
+
+                Console.WriteLine($"[INFO] Retrieved device info for player {playerId}");
                 return $"- {uaParser.Parse(userSession?.BrowserUserAgent).OS} - {userSession?.Ip}";
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureMessage($"{ex} - {playerId}", SentryLevel.Warning);
+                // sentryClient.CaptureMessage($"{ex} - {playerId}", SentryLevel.Warning);
+                Console.WriteLine($"[WARN] Error getting device information for {playerId}: {ex}");
                 return "- Unknown";
             }
         }
