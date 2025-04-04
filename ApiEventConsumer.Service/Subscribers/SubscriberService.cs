@@ -225,7 +225,7 @@ namespace ApiEventConsumer.Subscribers
                 var exchangeRate = GetExchangeRate();
                 var currencies = GetCurrencies();
                 var user = await GetUser(bet.PlayerId.ToString(), bet.OperatorId);
-                var currency = currencies.Where(c => c.Enabled == true && c.Name == bet.Currency && c.PartnerId == user.OperatorId).FirstOrDefault();
+                var currency = currencies?.Where(c => c.Enabled == true && c.Name == bet.Currency && c.PartnerId == user.OperatorId).FirstOrDefault();
 
                 if (currency == null)
                 {
