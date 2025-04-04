@@ -1,11 +1,7 @@
 using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
 using ApiEventConsumer.Subscribers;
-using ApiEventConsumer.Subscribers.SC;
-using ApiEventConsumer.Subscribers.VG;
-using ApiEventConsumer.Subscribers.SN;
 using MongoDB.Driver;
-using static Dapper.SqlMapper;
 
 namespace ApiEventConsumer
 {
