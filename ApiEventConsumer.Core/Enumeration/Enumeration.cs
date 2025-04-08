@@ -114,7 +114,7 @@ namespace ApiEventConsumer.Core.Enumeration
         public virtual int CompareTo(object? obj)
         {
             ArgumentNullException.ThrowIfNull(obj);
-            return Value.CompareTo(((Enumeration)obj).Value);
+            return string.CompareOrdinal(Value, ((Enumeration)obj).Value);
         }
 
         protected static T Parse<T, K>(K value, string description, Func<T, bool> predicate) where T : Enumeration, new()
@@ -128,6 +128,30 @@ namespace ApiEventConsumer.Core.Enumeration
             }
 
             return matchingItem;
+        }
+
+        public static bool operator <(Enumeration? left, Enumeration? right)
+        {
+            if (left is null) return right is not null;
+            return right is not null && left.CompareTo(right) < 0;
+        }
+
+        public static bool operator <=(Enumeration? left, Enumeration? right)
+        {
+            if (left is null) return true;
+            return right is not null && left.CompareTo(right) <= 0;
+        }
+
+        public static bool operator >(Enumeration? left, Enumeration? right)
+        {
+            if (left is null) return false;
+            return right is null || left.CompareTo(right) > 0;
+        }
+
+        public static bool operator >=(Enumeration? left, Enumeration? right)
+        {
+            if (right is null) return true;
+            return left is not null && left.CompareTo(right) >= 0;
         }
     }
 }

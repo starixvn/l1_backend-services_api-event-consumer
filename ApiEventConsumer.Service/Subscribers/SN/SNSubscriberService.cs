@@ -49,17 +49,29 @@ namespace ApiEventConsumer.Subscribers.SN
 
         protected override string GetStreamNamePath()
         {
+            if (appSettings.SubcriberSettings?.SN?.StreamSettings == null)
+            {
+                return string.Empty;
+            }
             var settings = appSettings.SubcriberSettings.SN.StreamSettings;
             return $"{settings.Prefix}_{settings.StreamName}";
         }
 
         protected override StreamSettings GetStreamSettingsPath()
         {
+            if (appSettings.SubcriberSettings?.SN?.StreamSettings == null)
+            {
+                return new StreamSettings();
+            }
             return appSettings.SubcriberSettings.SN.StreamSettings;
         }
 
         protected override string GetSystemTypePath()
         {
+            if (appSettings.SubcriberSettings?.SN?.SystemType == null)
+            {
+                return string.Empty;
+            }
             return appSettings.SubcriberSettings.SN.SystemType;
         }
     }

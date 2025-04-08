@@ -5,6 +5,8 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 {
     public class OddsMultipliersConfig
     {
+        private const int PERCENTAGE_MULTIPLIER = 100;
+
         public double ExtraFeeRatio { get; set; }
 
         [DisplayName("Extra Fee (%)")]
@@ -12,12 +14,11 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
         {
             get
             {
-                return ExtraFeeRatio * 100;
-
+                return ExtraFeeRatio * PERCENTAGE_MULTIPLIER;
             }
             set
             {
-                ExtraFeeRatio = value / 100;
+                ExtraFeeRatio = value / PERCENTAGE_MULTIPLIER;
             }
         }
 

@@ -4,7 +4,7 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 {
 	public class VideoStreamConfig
 	{
-        public VideoStreamConfig()
+        protected VideoStreamConfig()
         {
             VideoInfos = new List<VideoInfo>();
         }

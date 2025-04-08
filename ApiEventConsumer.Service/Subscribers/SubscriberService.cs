@@ -232,8 +232,8 @@ namespace ApiEventConsumer.Subscribers
                 msgBuilder.Append(string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
 
                 _ = Task.Run(() => chatBotApi.ForwardMessage(
-                    appSettings.ChatBotApiSettings.Token,
-                    appSettings.ChatBotApiSettings.ConversationIds.HighStake,
+                    appSettings.ChatBotApiSettings?.Token ?? string.Empty,
+                    appSettings.ChatBotApiSettings?.ConversationIds?.HighStake ?? string.Empty,
                     msgBuilder.ToString()));
 
                 return await Task.FromResult(new ChatBotResult());
@@ -263,12 +263,13 @@ namespace ApiEventConsumer.Subscribers
 
         private double GetHighStakeAmount()
         {
-            return appSettings.CloudSettings.IsCloudService ? DefaultHighStakeAmount : appSettings.ChatBotApiSettings.HighStakeAmount;
+            return appSettings.CloudSettings?.IsCloudService == true ? DefaultHighStakeAmount : 
+                appSettings.ChatBotApiSettings?.HighStakeAmount ?? DefaultHighStakeAmount;
         }
 
         private async Task<double> GetAmount(BetCreated bet)
         {
-            return appSettings.CloudSettings.IsCloudService ? (double)bet.Amount : await CalAmountOnBaseCurrency(bet);
+            return appSettings.CloudSettings?.IsCloudService == true ? (double)bet.Amount : await CalAmountOnBaseCurrency(bet);
         }
 
         private async Task<double> CalAmountOnBaseCurrency(BetCreated bet)
@@ -308,7 +309,7 @@ namespace ApiEventConsumer.Subscribers
 
         private async Task<string> GetCharName(BetCreated bet)
         {
-            return appSettings.CloudSettings.IsCloudService ?
+            return appSettings.CloudSettings?.IsCloudService == true ?
                $"playerId: {bet.PlayerId}" : await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
         }
 
@@ -373,7 +374,7 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                if (appSettings.CloudSettings.IsCloudService)
+                if (appSettings.CloudSettings?.IsCloudService == true)
                 {
                     return string.Empty;
                 }

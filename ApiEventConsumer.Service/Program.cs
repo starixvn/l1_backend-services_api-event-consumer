@@ -26,7 +26,7 @@ namespace ApiEventConsumer
                     {
                         config.Port = appSettings.Port;
                         config.UrlPath = "/";
-                        config.Hostname = "*";
+                        //config.Hostname = "*";
 
                         return config;
                     });
@@ -35,12 +35,18 @@ namespace ApiEventConsumer
                     services.AddEventListeners();
                     services.AddChatBotServices(appSettings);
 
-                    services.AddSubcriberServices(appSettings.SubcriberSettings);
+                    if (appSettings.SubcriberSettings != null)
+                    {
+                        services.AddSubcriberServices(appSettings.SubcriberSettings);
+                    }
 
-                    services.AddSingleton<IMongoClient>(sp =>
-                        new MongoClient(appSettings.DatabaseSettings.ConnectionString));
-                    services.AddSingleton<IMongoDatabase>(sp =>
-                        sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
+                    if (appSettings.DatabaseSettings != null)
+                    {
+                        services.AddSingleton<IMongoClient>(sp =>
+                            new MongoClient(appSettings.DatabaseSettings.ConnectionString));
+                        services.AddSingleton<IMongoDatabase>(sp =>
+                            sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
+                    }
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {

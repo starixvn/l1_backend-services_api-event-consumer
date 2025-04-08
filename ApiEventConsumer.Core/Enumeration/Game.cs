@@ -203,7 +203,7 @@ namespace ApiEventConsumer.Core.Enumeration
             if (gameSettings?.GameId > 0)
             {
                 GameId a = (GameId)gameSettings.GameId;
-                return new Game(gameSettings.GameName, gameSettings.DisplayName, a);
+                return new Game(gameSettings.GameName ?? string.Empty, gameSettings.DisplayName ?? string.Empty, a);
             }
             return Parse<Game, GameId>(id, "game id", item => item.GameId == id);
         }
@@ -214,7 +214,7 @@ namespace ApiEventConsumer.Core.Enumeration
             if (gameSettings?.GameId > 0)
             {
                 GameId a = (GameId)gameSettings.GameId;
-                return new Game(gameSettings.GameName, gameSettings.DisplayName, a);
+                return new Game(gameSettings.GameName ?? string.Empty, gameSettings.DisplayName ?? string.Empty, a);
             }
             return Parse<Game, string>(gameName, "game value", item => item.Value == gameName);
         }
@@ -231,9 +231,9 @@ namespace ApiEventConsumer.Core.Enumeration
 
         public static IEnumerable<Game> GetAllGamesBySystem(string systemType)
         {
-            var gameSettings = GamesSettings.GetGamesSettings().Games
-                                .Where(game => game.OfferedSystem.Contains(systemType))
-                                .Select(game => new Game(game.GameName, game.DisplayName, (GameId)game.GameId));
+            var gameSettings = (GamesSettings.GetGamesSettings().Games ?? Enumerable.Empty<GameSettings>())
+                                .Where(game => (game.OfferedSystem ?? Enumerable.Empty<string>()).Contains(systemType))
+                                .Select(game => new Game(game.GameName ?? string.Empty, game.DisplayName ?? string.Empty, (GameId)game.GameId));
             if (systemType.Equals(SystemType.SC1) || systemType.Equals(SystemType.VG2))
             {
                 return GetAll<Game>().Concat(gameSettings);
@@ -311,7 +311,8 @@ namespace ApiEventConsumer.Core.Enumeration
                 SevenUpDown,
             };
 
-            var gameSettings = GamesSettings.GetGamesSettings().Games.Select(game => new Game(game.GameName, game.DisplayName, (GameId)game.GameId));
+            var gameSettings = (GamesSettings.GetGamesSettings().Games ?? Enumerable.Empty<GameSettings>())
+                .Select(game => new Game(game.GameName ?? string.Empty, game.DisplayName ?? string.Empty, (GameId)game.GameId));
             return normalGame.Concat(gameSettings);
         }
 

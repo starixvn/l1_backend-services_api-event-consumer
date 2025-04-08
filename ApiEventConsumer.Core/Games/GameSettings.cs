@@ -28,7 +28,7 @@ namespace ApiEventConsumer.Core.Games
             Games = JsonConvert.DeserializeObject<IEnumerable<GameSettings>>(ReadSettingsFromFile());
         }
 
-        private string ReadSettingsFromFile()
+        private static string ReadSettingsFromFile()
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"game-settings.json");
             return File.ReadAllText(path);

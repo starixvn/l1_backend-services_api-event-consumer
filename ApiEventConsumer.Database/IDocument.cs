@@ -1,6 +1,7 @@
 ﻿using ApiEventConsumer.Database.Attributes;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Globalization;
 
 namespace ApiEventConsumer.Database
 {
@@ -26,7 +27,7 @@ namespace ApiEventConsumer.Database
                     typeof(BsonCollectionAttribute),
                     true)
                 .FirstOrDefault() as BsonCollectionAttribute;
-            return attribute?.CollectionName ?? documentType.Name.ToLower();
+            return attribute?.CollectionName ?? documentType.Name.ToLower(CultureInfo.InvariantCulture);
         }
 
         public static string GetDatabaseName(Type documentType)

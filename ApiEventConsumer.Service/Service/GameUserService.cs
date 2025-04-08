@@ -28,10 +28,10 @@ namespace ApiEventConsumer.Service.Service
         {
             var projectionAccount = Builders<AccountEntity>.Projection
                  .Include(x => x.Id)
-                 .Include(x => x.Local.MemberId);
+                 .Include(x => x.Local!.MemberId);
 
             var account = await accountRepository.Collection()
-                .Find(user => user.Local.MemberId == memberId)
+                .Find(user => user.Local!.MemberId == memberId)
                 .Project<AccountEntity>(projectionAccount)
                 .SortByDescending(x => x.Id)
                 .FirstOrDefaultAsync();

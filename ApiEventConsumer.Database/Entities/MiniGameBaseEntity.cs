@@ -2,8 +2,12 @@
 
 namespace ApiEventConsumer.Database.Entities
 {
-    public abstract class MiniGameBaseEntity : Document
+    public class MiniGameBaseEntity : Document
     {
+        protected MiniGameBaseEntity()
+        {
+        }
+
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime Time { get; set; }
 

@@ -27,8 +27,19 @@ namespace ApiEventConsumer.Service.Service
         {
             var gameInfo = await GetGameConfig(gameId);
 
-            var displayName = !string.IsNullOrEmpty(gameInfo.DisplayName) ? gameInfo.DisplayName : 
-                !string.IsNullOrEmpty(gameInfo.Name) ? Game.FromGameName(gameInfo.Name).DisplayName : string.Empty;
+            string displayName;
+            if (!string.IsNullOrEmpty(gameInfo.DisplayName))
+            {
+                displayName = gameInfo.DisplayName;
+            }
+            else if (!string.IsNullOrEmpty(gameInfo.Name))
+            {
+                displayName = Game.FromGameName(gameInfo.Name).DisplayName;
+            }
+            else
+            {
+                displayName = string.Empty;
+            }
             return displayName;
         }
 

@@ -7,12 +7,6 @@ using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers.SC;
 using ApiEventConsumer.Subscribers.SN;
 using ApiEventConsumer.Subscribers.VG;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Conventions;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Driver;
-using Refit;
 
 namespace ApiEventConsumer.Subscribers
 {
