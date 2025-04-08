@@ -2,7 +2,7 @@
 
 namespace ApiEventConsumer._Shared.Configurations
 {
-    public partial interface IAppSettings
+    public interface IAppSettings
     {
         public int Port { get; set; }
         public SubscriberSettings? SubcriberSettings { get; set; }
@@ -11,7 +11,7 @@ namespace ApiEventConsumer._Shared.Configurations
         public DatabaseSettings? DatabaseSettings { get; set; }
     }
 
-    public partial class AppSettings : IAppSettings
+    public class AppSettings : IAppSettings
     {
         public int Port { get; set; }
         public SubscriberSettings? SubcriberSettings { get; set; }

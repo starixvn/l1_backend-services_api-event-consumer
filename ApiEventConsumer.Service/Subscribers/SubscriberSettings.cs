@@ -43,11 +43,9 @@ namespace ApiEventConsumer.Subscribers
 
         // Move parsing logic into the settings class
         public StorageType GetStorageType() =>
-            StorageType?.ToLower() switch
-            {
-                "file" => NATS.Client.JetStream.StorageType.File,
-                _ => NATS.Client.JetStream.StorageType.Memory
-            };
+            StorageType?.ToLower() == "file" 
+                ? NATS.Client.JetStream.StorageType.File 
+                : NATS.Client.JetStream.StorageType.Memory;
 
         public RetentionPolicy GetRetentionPolicy() =>
             RetentionPolicy?.ToLower() switch
@@ -58,10 +56,8 @@ namespace ApiEventConsumer.Subscribers
             };
 
         public DiscardPolicy GetDiscardPolicy() =>
-            DiscardPolicy?.ToLower() switch
-            {
-                "new" => NATS.Client.JetStream.DiscardPolicy.New,
-                _ => NATS.Client.JetStream.DiscardPolicy.Old
-            };
+            DiscardPolicy?.ToLower() == "new" 
+                ? NATS.Client.JetStream.DiscardPolicy.New 
+                : NATS.Client.JetStream.DiscardPolicy.Old;
     }
 }

@@ -19,30 +19,20 @@ namespace ApiEventConsumer.Subscribers.SN
         private readonly IAppSettings appSettings;
         public SNSubscriberService(
             ISentryClient sentryClient,
-            IChatBotApi chatBotApi,
             IConfiguration configuration,
             ILogger<SubscriberService> _logger,
-            IGenericRepository<UserSessionEntity> usersessionRepository,
-            IGenericRepository<ExchangeRateEntity> exchangeRateRepository,
-            IGenericRepository<CurrencyEntity> currencyRepository,
-            IGenericRepository<AccountEntity> userRepository,
             ICacheManager cache,
             IAppSettings appSettings,
-            IGameUserService gameUserService,
-            IGeneralGameSettingService generalGameSettingService)
+            SubscriberService.RepositoryDependencies repositories,
+            SubscriberService.ServiceDependencies services)
             : base(BaseCode,
                   sentryClient,
-                  chatBotApi,
                   configuration,
                   _logger,
-                  usersessionRepository,
-                  exchangeRateRepository,
-                  currencyRepository,
-                  userRepository,
                   cache,
                   appSettings,
-                  gameUserService,
-                  generalGameSettingService)
+                  repositories,
+                  services)
         {
             this.appSettings = appSettings;
         }

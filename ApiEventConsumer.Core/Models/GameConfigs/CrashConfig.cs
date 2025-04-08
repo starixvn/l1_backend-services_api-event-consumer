@@ -4,11 +4,11 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 {
     public class CrashConfig
     {
-        public int MaxMultiplier { get; set; } = 0;
+        public int MaxMultiplier { get; set; }
 
-        public int MaxWinPerRound { get; set; } = 0;
+        public int MaxWinPerRound { get; set; }
 
-        public double CrashAtBase { get; set; } = 0;
+        public double CrashAtBase { get; set; }
 
         public MultiplierConfig? MultiplierConfigs { get; set; }
     }

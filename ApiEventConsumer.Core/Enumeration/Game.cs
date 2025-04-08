@@ -234,14 +234,9 @@ namespace ApiEventConsumer.Core.Enumeration
             var gameSettings = (GamesSettings.GetGamesSettings().Games ?? Enumerable.Empty<GameSettings>())
                                 .Where(game => (game.OfferedSystem ?? Enumerable.Empty<string>()).Contains(systemType))
                                 .Select(game => new Game(game.GameName ?? string.Empty, game.DisplayName ?? string.Empty, (GameId)game.GameId));
-            if (systemType.Equals(SystemType.SC1) || systemType.Equals(SystemType.VG2))
-            {
-                return GetAll<Game>().Concat(gameSettings);
-            }
-            else
-            {
-                return gameSettings;
-            }
+            return systemType.Equals(SystemType.SC1) || systemType.Equals(SystemType.VG2) 
+                ? GetAll<Game>().Concat(gameSettings)
+                : gameSettings;
         }
 
         public static IEnumerable<Game> GetNormalGames()

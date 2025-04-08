@@ -27,7 +27,7 @@ namespace ApiEventConsumer.Api._Shared.Helpers
             this.cache = cache;
         }
 
-        public void SetCache<T>(string key, T value, int ExpiredInMinutes = DefaultExpiredInMinutes)
+        public void SetCache<T>(string key, T value, int ExpiredInMinutes)
         {
             var cacheEntryOptions = new MemoryCacheEntryOptions()
                    .SetSlidingExpiration(TimeSpan.FromMinutes(DefaultExpiredInMinutes));

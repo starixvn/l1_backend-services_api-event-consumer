@@ -4,10 +4,10 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 {
 	public class TournamentConfig
 	{
-        [DisplayName("Tournament-Code")]
+        [DisplayName("Tournament Code")]
         public string? Code { get; set; }
 
-        [DisplayName("Tournament-Teams")]
+        [DisplayName("Tournament Teams")]
         public List<string>? Teams { get; set; }
     }
 }

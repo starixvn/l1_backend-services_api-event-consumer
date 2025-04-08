@@ -132,25 +132,37 @@ namespace ApiEventConsumer.Core.Enumeration
 
         public static bool operator <(Enumeration? left, Enumeration? right)
         {
-            if (left is null) return right is not null;
+            if (left is null)
+            {
+                return right is not null;
+            }
             return right is not null && left.CompareTo(right) < 0;
         }
 
         public static bool operator <=(Enumeration? left, Enumeration? right)
         {
-            if (left is null) return true;
+            if (left is null)
+            {
+                return true;
+            }
             return right is not null && left.CompareTo(right) <= 0;
         }
 
         public static bool operator >(Enumeration? left, Enumeration? right)
         {
-            if (left is null) return false;
+            if (left is null)
+            {
+                return false;
+            }
             return right is null || left.CompareTo(right) > 0;
         }
 
         public static bool operator >=(Enumeration? left, Enumeration? right)
         {
-            if (right is null) return true;
+            if (right is null)
+            {
+                return true;
+            }
             return left is not null && left.CompareTo(right) >= 0;
         }
     }

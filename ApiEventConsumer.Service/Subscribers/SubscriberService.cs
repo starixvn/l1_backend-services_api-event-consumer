@@ -32,7 +32,7 @@ namespace ApiEventConsumer.Subscribers
         void InitializeNatsConnection();
     }
 
-    public abstract class SubscriberService : ISubscriberService, IHostedService
+    public abstract class SubscriberService : ISubscriberService, IHostedService, IDisposable
     {
         protected readonly string baseCode;
         protected readonly ISentryClient sentryClient;
@@ -58,35 +58,73 @@ namespace ApiEventConsumer.Subscribers
         private readonly IGameUserService gameUserService;
         private readonly IChatBotApi chatBotApi;
 
+        private bool _disposed;
 
+        // Create new configuration classes
+        public class RepositoryDependencies
+        {
+            public IGenericRepository<UserSessionEntity> UserSessionRepository { get; }
+            public IGenericRepository<ExchangeRateEntity> ExchangeRateRepository { get; }
+            public IGenericRepository<CurrencyEntity> CurrencyRepository { get; }
+            public IGenericRepository<AccountEntity> UserRepository { get; }
+
+            public RepositoryDependencies(
+                IGenericRepository<UserSessionEntity> userSessionRepository,
+                IGenericRepository<ExchangeRateEntity> exchangeRateRepository,
+                IGenericRepository<CurrencyEntity> currencyRepository,
+                IGenericRepository<AccountEntity> userRepository)
+            {
+                UserSessionRepository = userSessionRepository;
+                ExchangeRateRepository = exchangeRateRepository;
+                CurrencyRepository = currencyRepository;
+                UserRepository = userRepository;
+            }
+        }
+
+        public class ServiceDependencies
+        {
+            public IGameUserService GameUserService { get; }
+            public IGeneralGameSettingService GeneralGameSettingService { get; }
+            public IChatBotApi ChatBotApi { get; }
+
+            public ServiceDependencies(
+                IGameUserService gameUserService,
+                IGeneralGameSettingService generalGameSettingService,
+                IChatBotApi chatBotApi)
+            {
+                GameUserService = gameUserService;
+                GeneralGameSettingService = generalGameSettingService;
+                ChatBotApi = chatBotApi;
+            }
+        }
+
+        // Updated constructor
         protected SubscriberService(
-            string baseCode, 
+            string baseCode,
             ISentryClient sentryClient,
-            IChatBotApi chatBotApi,
             IConfiguration configuration,
             ILogger<SubscriberService> logger,
-            IGenericRepository<UserSessionEntity> usersessionRepository,
-            IGenericRepository<ExchangeRateEntity> exchangeRateRepository,
-            IGenericRepository<CurrencyEntity> currencyRepository,
-            IGenericRepository<AccountEntity> userRepository,
             ICacheManager cache,
             IAppSettings appSettings,
-            IGameUserService gameUserService,
-            IGeneralGameSettingService generalGameSettingService)
+            RepositoryDependencies repositories,
+            ServiceDependencies services)
         {
             this.baseCode = baseCode;
             this.sentryClient = sentryClient;
-            this.chatBotApi = chatBotApi;
             _configuration = configuration;
             _logger = logger;
             this.appSettings = appSettings;
             this.cache = cache;
-            this.gameUserService = gameUserService;
-            this.usersessionRepository = usersessionRepository;
-            this.exchangeRateRepository = exchangeRateRepository;
-            this.currencyRepository = currencyRepository;
-            this.userRepository = userRepository;
-            this.generalGameSettingService = generalGameSettingService;
+            
+            this.usersessionRepository = repositories.UserSessionRepository;
+            this.exchangeRateRepository = repositories.ExchangeRateRepository;
+            this.currencyRepository = repositories.CurrencyRepository;
+            this.userRepository = repositories.UserRepository;
+            
+            this.gameUserService = services.GameUserService;
+            this.generalGameSettingService = services.GeneralGameSettingService;
+            this.chatBotApi = services.ChatBotApi;
+            
             uaParser = Parser.GetDefault();
         }
 
@@ -111,7 +149,10 @@ namespace ApiEventConsumer.Subscribers
             try
             {
                 var streamSettings = GetStreamSettingsPath();
-                if (!streamSettings.Enable) return;
+                if (!streamSettings.Enable)
+                {
+                    return;
+                }
 
                 ConnectToNats(streamSettings);
                 ConfigureJetStream();
@@ -126,7 +167,7 @@ namespace ApiEventConsumer.Subscribers
         {
             var options = ConnectionFactory.GetDefaultOptions();
             options.Url = streamSettings.Host;
-            options.DisconnectedEventHandler = (sender, args) =>
+            options.DisconnectedEventHandler = (_, args) =>
             {
                 sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
             };
@@ -135,7 +176,7 @@ namespace ApiEventConsumer.Subscribers
 
             if (_connection.State != ConnState.CONNECTED)
             {
-                throw new Exception($"Failed to connect to NATS server. State: {_connection.State}");
+                throw new InvalidOperationException($"Failed to connect to NATS server. State: {_connection.State}");
             }
         }
 
@@ -247,19 +288,33 @@ namespace ApiEventConsumer.Subscribers
 
         public void Dispose()
         {
-            try
-            {
-                _betCreatedSub?.Unsubscribe();
-                _betSettledSub?.Unsubscribe();
-                _connection?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
-            }
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
 
+            if (disposing)
+            {
+                try
+                {
+                    _betCreatedSub?.Unsubscribe();
+                    _betSettledSub?.Unsubscribe();
+                    _connection?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
+                }
+            }
+
+            _disposed = true;
+        }
 
         private double GetHighStakeAmount()
         {
@@ -279,15 +334,15 @@ namespace ApiEventConsumer.Subscribers
                 var exchangeRate = GetExchangeRate();
                 var currencies = GetCurrencies();
                 var user = await GetUser(bet.PlayerId.ToString(), bet.OperatorId ?? string.Empty);
-                var currency = currencies?.Where(c => c.Enabled == true && c.Name == bet.Currency && c.PartnerId == user?.OperatorId).FirstOrDefault();
+                var currency = currencies?.FirstOrDefault(c => c.Enabled && c.Name == bet.Currency && c.PartnerId == user?.OperatorId);
 
                 if (currency == null || exchangeRate.Code == null || currency.Code == null)
                 {
                     return (double)bet.Amount;
                 }
 
-                var rate = (double)exchangeRate.Code[currency.Code] * (double)currency.Multiplier;
-                return (double)bet.Amount * rate;
+                var rate = exchangeRate.Code[currency.Code] * (decimal)currency.Multiplier;
+                return (double)bet.Amount * (double)rate;
             }
             catch (Exception e)
             {
@@ -332,7 +387,7 @@ namespace ApiEventConsumer.Subscribers
 
         private static string GetModeName(Dictionary<string, string> metadata)
         {
-            if (metadata != null && metadata.ContainsKey("mode") && metadata["mode"] == ClientDisplayMode.Portrait.Value)
+            if (metadata != null && metadata.TryGetValue("mode", out var mode) && mode == ClientDisplayMode.Portrait.Value)
             {
                 return $" - {ClientDisplayMode.Portrait.DisplayName}";
             }
@@ -340,26 +395,20 @@ namespace ApiEventConsumer.Subscribers
             return string.Empty;
         }
 
-        private string GetMegaKenoVersionSuffix(string systemType)
+        private static string GetMegaKenoVersionSuffix(string systemType)
         {
-            return systemType switch
-            {
-                SystemType.SC1 => "MK",
-                SystemType.VG2 => "VGK",
-                _ => string.Empty
-            };
+            return systemType == SystemType.SC1 ? "MK" 
+                 : systemType == SystemType.VG2 ? "VGK" 
+                 : string.Empty;
         }
 
-        private string GetCocosVersionSuffix(string systemType)
+        private static string GetCocosVersionSuffix(string systemType)
         {
-            return systemType switch
-            {
-                SystemType.SC1 => "C",
-                _ => string.Empty
-            };
+            return systemType == SystemType.SC1 ? "C" 
+                 : string.Empty;
         }
 
-        private string GetSystemPrefixName(string systemType)
+        private static string GetSystemPrefixName(string systemType)
         {
             return systemType switch
             {

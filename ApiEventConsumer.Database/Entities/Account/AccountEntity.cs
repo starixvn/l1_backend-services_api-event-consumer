@@ -1,5 +1,4 @@
 ﻿using ApiEventConsumer.Database.Attributes;
-using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace ApiEventConsumer.Database.Entities
