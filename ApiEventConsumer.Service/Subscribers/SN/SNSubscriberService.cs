@@ -34,7 +34,7 @@ namespace ApiEventConsumer.Subscribers.SN
                 return string.Empty;
             }
             var settings = appSettings.SubcriberSettings.SN.StreamSettings;
-            return $"{settings.Prefix}_{settings.StreamName}";
+            return $"{settings.StreamName}_{settings.Prefix}";
         }
 
         protected override StreamSettings GetStreamSettingsPath()

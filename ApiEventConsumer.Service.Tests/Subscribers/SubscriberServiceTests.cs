@@ -131,15 +131,15 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task GetExchangeRate_WhenCacheEmpty_ShouldFetchFromRepository()
+        public void GetExchangeRate_WhenCacheEmpty_ShouldFetchFromRepository()
         {
             // Arrange
             var expectedRate = new ExchangeRateEntity();
             var mockQueryable = new List<ExchangeRateEntity> { expectedRate }.AsQueryable();
-            
+
             _mockCache.Setup(x => x.GetCache<ExchangeRateEntity>(It.IsAny<string>()))
                      .Returns(default(ExchangeRateEntity));
-            
+
             _mockExchangeRateRepo.Setup(x => x.AsQueryable())
                                 .Returns(mockQueryable);
 
@@ -279,7 +279,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         // Helper method to set private fields
-        private void SetPrivateField<T>(SubscriberService service, string fieldName, T value)
+        private static void SetPrivateField<T>(SubscriberService service, string fieldName, T value)
         {
             var field = typeof(SubscriberService).GetField(fieldName, 
                 System.Reflection.BindingFlags.NonPublic | 
@@ -293,8 +293,9 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Arrange
             var streamName = "test_stream";
             var mockJsManagement = new Mock<IJetStreamManagement>();
-            mockJsManagement.Setup(x => x.GetStreamInfo(streamName))
-                            .Returns((StreamInfo)null);
+            mockJsManagement
+                .Setup(x => x.GetStreamInfo(streamName))
+                .Returns(() => null!);
 
             var sut = CreateSubscriberService();
 
@@ -400,7 +401,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task HandleBetCreated_ValidMessage_ProcessesSuccessfully()
+        public void HandleBetCreated_ValidMessage_ProcessesSuccessfully()
         {
             // Arrange
             var service = CreateService(new StreamSettings { Enable = true });
@@ -431,7 +432,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task HandleBetCreated_InvalidMessage_HandlesError()
+        public void HandleBetCreated_InvalidMessage_HandlesError()
         {
             // Arrange
             var service = CreateService(new StreamSettings { Enable = true });
@@ -574,15 +575,16 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         [Fact]
         public void ConfigureJetStream_WhenConnectionNull_ReturnsEarly()
         {
-            // Arrange
             var service = CreateService(new StreamSettings { Enable = true });
 
-            // Act - using reflection to call private method
             var method = typeof(SubscriberService).GetMethod("ConfigureJetStream", 
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            method.Invoke(service, new object[] { });
+            
+            if (method != null)
+            {
+                method.Invoke(service, []);
+            }
 
-            // Assert
             _mockSentryClient.Verify(
                 x => x.CaptureEvent(
                     It.IsAny<SentryEvent>(), 
@@ -612,7 +614,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         [InlineData(GameId.KenoMatch2, "KenoSoccer2")]
         [InlineData(GameId.KenoPower1, "KenoPower")]
         [InlineData((GameId)999, null)]
-        public async Task GetGameName_ForDifferentGames_ReturnsCorrectName(GameId gameId, string expectedName)
+        public async Task GetGameName_ForDifferentGames_ReturnsCorrectName(GameId gameId, string? expectedName)
         {
             // Arrange
             var service = CreateService(new StreamSettings { Enable = true });

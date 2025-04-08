@@ -111,17 +111,11 @@ namespace ApiEventConsumer.Service.Tests.Service
 
             _mockRepository.Setup(x => x.AsQueryable()).Returns(configs);
         }
-
-        private void SetupEmptyRepository()
-        {
-            _mockRepository.Setup(x => x.AsQueryable())
-                          .Returns(Enumerable.Empty<GameConfigEntity>().AsQueryable());
-        }
     }
 
     // Helper class to match the API response structure
     public class ApiResponse<T>
     {
-        public T Data { get; set; }
+        public T? Data { get; set; }
     }
 }

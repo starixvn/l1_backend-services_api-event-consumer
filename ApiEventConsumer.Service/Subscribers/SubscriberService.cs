@@ -29,6 +29,7 @@ namespace ApiEventConsumer.Subscribers
 
     public interface ISubscriberService
     {
+        string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType);
         void InitializeNatsConnection();
     }
 
