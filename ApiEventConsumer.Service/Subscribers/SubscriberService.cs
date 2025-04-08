@@ -15,6 +15,9 @@ using UAParser;
 using MongoDB.Driver;
 using ApiEventConsumer.Core.Models.ChatBot;
 using ApiEventConsumer.Core.Models.NatMessage;
+using Sentry.Protocol;
+using Sentry;
+using NATS.Client.JetStream;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -46,7 +49,7 @@ namespace ApiEventConsumer.Subscribers
         private IAsyncSubscription? _betCreatedSub;
         private IAsyncSubscription? _betSettledSub;
 
-        private const string HighStakeMessageTemplate = "consumer - {0} - {1} - {2} - {3} - {4} {5}";
+        private const string HighStakeMessageTemplate = "test - {0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 
@@ -87,8 +90,11 @@ namespace ApiEventConsumer.Subscribers
             uaParser = Parser.GetDefault();
         }
 
-        protected abstract StreamSettings GetStreamSettingsPath(IAppSettings appSettings);
-        protected abstract string GetSystemTypePath(IAppSettings appSettings);
+        protected abstract StreamSettings GetStreamSettingsPath();
+        protected abstract string GetSystemTypePath();
+        protected abstract string GetStreamNamePath();
+        protected abstract void InitializeNatsConnection(IConnection? _connection, IAsyncSubscription? _betCreatedSub);
+        protected abstract void HandleBetCreated(object? sender, MsgHandlerEventArgs args);
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -104,37 +110,10 @@ namespace ApiEventConsumer.Subscribers
 
         public void InitializeNatsConnection()
         {
-            try
-            {
-                var streamSettings = GetStreamSettingsPath(appSettings);
-
-                if (!streamSettings.Enable) return;
-
-                var options = ConnectionFactory.GetDefaultOptions();
-                options.Url = streamSettings.Host;
-                options.DisconnectedEventHandler = (sender, args) =>
-                {
-                     sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-                };
-
-                _connection = new ConnectionFactory().CreateConnection(options);
-
-                if (_connection.State != ConnState.CONNECTED)
-                {
-                     sentryClient.CaptureException(new Exception($"Failed to connect to NATS server. State: {_connection.State}"));
-                    return;
-                }
-
-                _betCreatedSub = _connection.SubscribeAsync($"api.bet.created", HandleBetCreated);
-                _betCreatedSub.Start();
-            }
-            catch (Exception ex)
-            {
-                 sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
-            }
+            InitializeNatsConnection(_connection, _betCreatedSub);
         }
 
-        public async Task<ChatBotResult> NotifyHighStake(BetCreated bet)
+        public async Task<ChatBotResult> NotifyHighStake(BetCreated bet, string systemType)
         {
             try
             {
@@ -149,10 +128,10 @@ namespace ApiEventConsumer.Subscribers
                 var msgBuilder = new StringBuilder();
                 var game = await GetGameName(bet.GameTypeId);
                 var charName = await GetCharName(bet);
-                var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata);
+                var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata, systemType);
 
                 var playerDeviceExtraInformation = await GetDeviceInformation(bet.PlayerId.ToString());
-                msgBuilder.Append(string.Format(HighStakeMessageTemplate, "", charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
+                msgBuilder.Append(string.Format(HighStakeMessageTemplate, systemType, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
 
                 _ = Task.Run(() => chatBotApi.ForwardMessage(
                     appSettings.ChatBotApiSettings.Token,
@@ -182,23 +161,7 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        protected virtual async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
-        {
-            try
-            {
-                var message = Encoding.UTF8.GetString(args.Message.Data);
-                var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
-                
-                if (betCreated != null)
-                {
-                    await NotifyHighStake(betCreated);
-                }
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
-            }
-        }
+
 
         private double GetHighStakeAmount()
         {
@@ -251,9 +214,8 @@ namespace ApiEventConsumer.Subscribers
                $"playerId: {bet.PlayerId}" : await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
         }
 
-        private string GetVersionName(Versions version, Dictionary<string, string> metadata)
+        private string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
         {
-            var systemType = _configuration.GetSection(GetSystemTypePath(appSettings)).ToString();
             var systemPrefix = GetSystemPrefixName(systemType);
 
             return version switch

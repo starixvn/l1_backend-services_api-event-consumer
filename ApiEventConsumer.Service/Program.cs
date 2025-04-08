@@ -2,6 +2,8 @@ using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
 using ApiEventConsumer.Subscribers;
 using MongoDB.Driver;
+using Sentry;
+using Sentry.Protocol;
 
 namespace ApiEventConsumer
 {
@@ -25,7 +27,7 @@ namespace ApiEventConsumer
                     {
                         config.Port = appSettings.Port;
                         config.UrlPath = "/";
-                        config.Hostname = "*";
+                        //config.Hostname = "*";
 
                         return config;
                     });
