@@ -2,8 +2,8 @@
 
 namespace ApiEventConsumer.Core.Models.GameConfigs
 {
-	public class TournamentConfig
-	{
+    public class TournamentConfig
+    {
         [DisplayName("Tournament Code")]
         public string? Code { get; set; }
 

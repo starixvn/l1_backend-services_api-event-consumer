@@ -1,5 +1,4 @@
 ﻿using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Api._Shared.Helpers;
 using Sentry;
 
 namespace ApiEventConsumer.Subscribers.SN
