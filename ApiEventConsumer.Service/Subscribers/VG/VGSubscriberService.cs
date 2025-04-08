@@ -1,10 +1,5 @@
 ﻿using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Api._Shared.Helpers;
-using ApiEventConsumer.Database.Entities.Currencies;
-using ApiEventConsumer.Database.Entities.ExchangeRates;
-using ApiEventConsumer.Database.Entities;
-using ApiEventConsumer.Database;
-using ApiEventConsumer.Service.Service;
 using Sentry;
 
 namespace ApiEventConsumer.Subscribers.VG
@@ -20,22 +15,18 @@ namespace ApiEventConsumer.Subscribers.VG
 
         public VGSubcriberService(
             ISentryClient sentryClient,
-            IConfiguration configuration,
             ILogger<SubscriberService> _logger,
-            ICacheManager cache,
-            IAppSettings appSettings,
+            SubscriberService.ConfigurationDependencies configurations,
             SubscriberService.RepositoryDependencies repositories,
             SubscriberService.ServiceDependencies services)
             : base(BaseCode,
                   sentryClient,
-                  configuration,
                   _logger,
-                  cache,
-                  appSettings,
+                  configurations,
                   repositories,
                   services)
         {
-            this.appSettings = appSettings;
+            this.appSettings = configurations.AppSettings;
         }
 
         protected override string GetStreamNamePath()

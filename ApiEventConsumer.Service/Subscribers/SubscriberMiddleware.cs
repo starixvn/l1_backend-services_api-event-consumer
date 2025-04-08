@@ -7,6 +7,7 @@ using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers.SC;
 using ApiEventConsumer.Subscribers.SN;
 using ApiEventConsumer.Subscribers.VG;
+using ApiEventConsumer._Shared.Configurations;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -44,6 +45,12 @@ namespace ApiEventConsumer.Subscribers
                 sp.GetRequiredService<IGeneralGameSettingService>(),
                 sp.GetRequiredService<IChatBotApi>()
             ));
+
+            services.AddSingleton<SubscriberService.ConfigurationDependencies>(sp => new SubscriberService.ConfigurationDependencies(
+                    sp.GetRequiredService<IConfiguration>(),
+                    sp.GetRequiredService<ICacheManager>(),
+                    sp.GetRequiredService<IAppSettings>()
+                ));
         }
     }
 }

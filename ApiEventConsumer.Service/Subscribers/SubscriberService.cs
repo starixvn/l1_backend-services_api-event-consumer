@@ -47,7 +47,6 @@ namespace ApiEventConsumer.Subscribers
 
         private IConnection? _connection;
         private IAsyncSubscription? _betCreatedSub;
-        private IAsyncSubscription? _betSettledSub;
 
         private const string HighStakeMessageTemplate = "Event {0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
@@ -60,7 +59,6 @@ namespace ApiEventConsumer.Subscribers
 
         private bool _disposed;
 
-        // Create new configuration classes
         public class RepositoryDependencies
         {
             public IGenericRepository<UserSessionEntity> UserSessionRepository { get; }
@@ -98,23 +96,37 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        // Updated constructor
+        public class ConfigurationDependencies
+        {
+            public IConfiguration Configuration { get; }
+            public ICacheManager Cache { get; }
+            public IAppSettings AppSettings { get; }
+
+            public ConfigurationDependencies(
+                IConfiguration configuration,
+                ICacheManager cache,
+                IAppSettings appSettings)
+            {
+                Configuration = configuration;
+                Cache = cache;
+                AppSettings = appSettings;
+            }
+        }
+
         protected SubscriberService(
             string baseCode,
             ISentryClient sentryClient,
-            IConfiguration configuration,
             ILogger<SubscriberService> logger,
-            ICacheManager cache,
-            IAppSettings appSettings,
+            ConfigurationDependencies configurations,
             RepositoryDependencies repositories,
             ServiceDependencies services)
         {
             this.baseCode = baseCode;
             this.sentryClient = sentryClient;
-            _configuration = configuration;
             _logger = logger;
-            this.appSettings = appSettings;
-            this.cache = cache;
+            _configuration = configurations.Configuration;
+            this.appSettings = configurations.AppSettings;
+            this.cache = configurations.Cache;
             
             this.usersessionRepository = repositories.UserSessionRepository;
             this.exchangeRateRepository = repositories.ExchangeRateRepository;
@@ -183,7 +195,10 @@ namespace ApiEventConsumer.Subscribers
         private void ConfigureJetStream()
         {
             var streamName = GetStreamNamePath();
-            if (_connection == null) return;
+            if (_connection == null)
+            {
+                return;
+            }
             
             var jsContext = _connection.CreateJetStreamContext();
             var jsManagement = _connection.CreateJetStreamManagementContext();
@@ -212,7 +227,6 @@ namespace ApiEventConsumer.Subscribers
             catch (NATSJetStreamException ex)
             {
                 sentryClient.CaptureException(ex);
-                return;
             }
         }
 
@@ -304,7 +318,6 @@ namespace ApiEventConsumer.Subscribers
                 try
                 {
                     _betCreatedSub?.Unsubscribe();
-                    _betSettledSub?.Unsubscribe();
                     _connection?.Dispose();
                 }
                 catch (Exception ex)
@@ -368,7 +381,7 @@ namespace ApiEventConsumer.Subscribers
                $"playerId: {bet.PlayerId}" : await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
         }
 
-        private string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
+        private static string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
         {
             var systemPrefix = GetSystemPrefixName(systemType);
 
@@ -397,9 +410,15 @@ namespace ApiEventConsumer.Subscribers
 
         private static string GetMegaKenoVersionSuffix(string systemType)
         {
-            return systemType == SystemType.SC1 ? "MK" 
-                 : systemType == SystemType.VG2 ? "VGK" 
-                 : string.Empty;
+            if (systemType == SystemType.SC1)
+            {
+                return "MK";
+            }
+            if (systemType == SystemType.VG2)
+            {
+                return "VGK";
+            }
+            return string.Empty;
         }
 
         private static string GetCocosVersionSuffix(string systemType)
