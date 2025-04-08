@@ -49,7 +49,7 @@ namespace ApiEventConsumer.Subscribers
         private IAsyncSubscription? _betCreatedSub;
         private IAsyncSubscription? _betSettledSub;
 
-        private const string HighStakeMessageTemplate = "test - {0} - {1} - {2} - {3} - {4} {5}";
+        private const string HighStakeMessageTemplate = "Event {0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 
@@ -93,8 +93,6 @@ namespace ApiEventConsumer.Subscribers
         protected abstract StreamSettings GetStreamSettingsPath();
         protected abstract string GetSystemTypePath();
         protected abstract string GetStreamNamePath();
-        protected abstract void InitializeNatsConnection(IConnection? _connection, IAsyncSubscription? _betCreatedSub);
-        protected abstract void HandleBetCreated(object? sender, MsgHandlerEventArgs args);
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -110,8 +108,106 @@ namespace ApiEventConsumer.Subscribers
 
         public void InitializeNatsConnection()
         {
-            InitializeNatsConnection(_connection, _betCreatedSub);
+            try
+            {
+                var streamSettings = GetStreamSettingsPath();
+                if (!streamSettings.Enable) return;
+
+                ConnectToNats(streamSettings);
+                ConfigureJetStream();
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
+            }
         }
+
+        private void ConnectToNats(StreamSettings streamSettings)
+        {
+            var options = ConnectionFactory.GetDefaultOptions();
+            options.Url = streamSettings.Host;
+            options.DisconnectedEventHandler = (sender, args) =>
+            {
+                sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
+            };
+
+            _connection = new ConnectionFactory().CreateConnection(options);
+
+            if (_connection.State != ConnState.CONNECTED)
+            {
+                throw new Exception($"Failed to connect to NATS server. State: {_connection.State}");
+            }
+        }
+
+        private void ConfigureJetStream()
+        {
+            var streamName = GetStreamNamePath();
+            var jsContext = _connection.CreateJetStreamContext();
+            var jsManagement = _connection.CreateJetStreamManagementContext();
+
+            ConfigureStream(jsManagement, streamName);
+            ConfigureSubscription(jsContext, streamName);
+        }
+
+        private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
+        {
+            var streamConfig = StreamConfiguration.Builder()
+                .WithName(streamName)
+                .WithSubjects($"{streamName}.*")
+                .WithStorageType(StorageType.Memory)
+                .WithRetentionPolicy(RetentionPolicy.WorkQueue)
+                .Build();
+
+            try
+            {
+                var streamInfo = jsManagement.GetStreamInfo(streamName);
+                if (streamInfo == null)
+                {
+                    jsManagement.AddStream(streamConfig);
+                }
+            }
+            catch (NATSJetStreamException ex)
+            {
+                sentryClient.CaptureException(ex);
+                return;
+            }
+        }
+
+        private void ConfigureSubscription(IJetStream jsContext, string streamName)
+        {
+            var consumerConfig = ConsumerConfiguration.Builder()
+                .WithAckWait(30000)
+                .WithDeliverPolicy(DeliverPolicy.New)
+                .Build();
+
+            var subscribeOptions = PushSubscribeOptions.Builder()
+                .WithStream(streamName)
+                .WithConfiguration(consumerConfig)
+                .Build();
+
+            _betCreatedSub = jsContext.PushSubscribeAsync($"api.bet.created", HandleBetCreated, true, subscribeOptions);
+            _betCreatedSub.Start();
+        }
+
+        private async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
+        {
+            try
+            {
+                var message = Encoding.UTF8.GetString(args.Message.Data);
+                var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
+                var systemType = GetSystemTypePath();
+
+                if (betCreated != null)
+                {
+                    await NotifyHighStake(betCreated, systemType);
+                }
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
+            }
+        }
+
 
         public async Task<ChatBotResult> NotifyHighStake(BetCreated bet, string systemType)
         {
@@ -131,7 +227,7 @@ namespace ApiEventConsumer.Subscribers
                 var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata, systemType);
 
                 var playerDeviceExtraInformation = await GetDeviceInformation(bet.PlayerId.ToString());
-                msgBuilder.Append(string.Format(HighStakeMessageTemplate, systemType, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
+                msgBuilder.Append(string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
 
                 _ = Task.Run(() => chatBotApi.ForwardMessage(
                     appSettings.ChatBotApiSettings.Token,
