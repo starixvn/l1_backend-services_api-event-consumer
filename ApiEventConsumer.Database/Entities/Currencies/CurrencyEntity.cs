@@ -8,10 +8,10 @@ namespace ApiEventConsumer.Database.Entities.Currencies
     public class CurrencyEntity : Document
     {
         [BsonElement("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [BsonElement("code")]
-        public string Code { get; set; }
+        public string? Code { get; set; }
 
         [BsonElement("multiplier")]
         public double Multiplier { get; set; }
@@ -23,7 +23,7 @@ namespace ApiEventConsumer.Database.Entities.Currencies
         public bool IsTest { get; set; }
 
         [BsonElement("partnerId")]
-        public string PartnerId { get; set; }
+        public string? PartnerId { get; set; }
 
         [BsonElement("groupId")]
         public ObjectId GroupId { get; set; }

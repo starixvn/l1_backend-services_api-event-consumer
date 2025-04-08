@@ -13,7 +13,7 @@ namespace ApiEventConsumer.Api._Shared.Helpers
     {
         void SetCache<T>(string key, T value, int ExpiredInMinutes);
 
-        T GetCache<T>(string key);
+        T? GetCache<T>(string key);
     }
 
     public class CacheManager : ICacheManager
@@ -35,9 +35,9 @@ namespace ApiEventConsumer.Api._Shared.Helpers
             cache.Set(key, value, cacheEntryOptions);
         }
 
-        public T GetCache<T>(string key)
+        public T? GetCache<T>(string key)
         {
-            T value;
+            T? value;
 
             if (cache.TryGetValue(key, out value))
             {

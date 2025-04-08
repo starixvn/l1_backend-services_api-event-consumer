@@ -20,7 +20,9 @@ namespace ApiEventConsumer._Shared.Middlewares
 
         public static void AddChatBotServices(this IServiceCollection services, AppSettings appSettings)
         {
-            HttpClient client = InitHttpClient(appSettings.ChatBotApiSettings.Url, appSettings.ChatBotApiSettings.Proxy);
+            if (appSettings.ChatBotApiSettings?.Url == null) return;
+
+            HttpClient client = InitHttpClient(appSettings.ChatBotApiSettings.Url, appSettings.ChatBotApiSettings.Proxy ?? string.Empty);
             client.Timeout = TimeSpan.FromSeconds(appSettings.ChatBotApiSettings.TimeoutInSeconds);
 
             services.AddSingleton(RestService.For<IChatBotApi>(client));
@@ -28,7 +30,7 @@ namespace ApiEventConsumer._Shared.Middlewares
 
         private static HttpClient InitHttpClient(string url, string proxy)
         {
-            HttpClientHandler handler = null;
+            HttpClientHandler? handler = null;
 
             if (!string.IsNullOrEmpty(proxy))
             {

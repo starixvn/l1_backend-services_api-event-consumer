@@ -18,9 +18,9 @@ namespace ApiEventConsumer.Database.Entities.ExchangeRates
         public int ExId { get; set; }
 
         [BsonElement("source")]
-        public string Source { get; set; }
+        public string? Source { get; set; }
 
         [BsonElement("code")]
-        public Dictionary<string, decimal> Code { get; set; }
+        public Dictionary<string, decimal>? Code { get; set; }
     }
 }

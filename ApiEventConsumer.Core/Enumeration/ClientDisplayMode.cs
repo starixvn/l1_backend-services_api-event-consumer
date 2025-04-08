@@ -7,7 +7,8 @@
 
         public static readonly Role Portrait = new Role(PortraitValue, "Portrait");
         public static readonly Role Landscape = new Role(LandscapeValue, "Landscape");
-        public ClientDisplayMode()
+
+        public ClientDisplayMode() : base("default", "Default Display Mode")
         {
         }
 

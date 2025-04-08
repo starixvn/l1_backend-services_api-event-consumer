@@ -142,6 +142,8 @@ namespace ApiEventConsumer.Subscribers
         private void ConfigureJetStream()
         {
             var streamName = GetStreamNamePath();
+            if (_connection == null) return;
+            
             var jsContext = _connection.CreateJetStreamContext();
             var jsManagement = _connection.CreateJetStreamManagementContext();
 
@@ -218,13 +220,13 @@ namespace ApiEventConsumer.Subscribers
 
                 if (bet.Currency == "UUS" || amount < highStakeAmount)
                 {
-                    return await Task.FromResult<ChatBotResult>(default);
+                    return await Task.FromResult(new ChatBotResult());
                 }
 
                 var msgBuilder = new StringBuilder();
                 var game = await GetGameName(bet.GameTypeId);
                 var charName = await GetCharName(bet);
-                var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata, systemType);
+                var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata ?? [], systemType);
 
                 var playerDeviceExtraInformation = await GetDeviceInformation(bet.PlayerId.ToString());
                 msgBuilder.Append(string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
@@ -275,10 +277,10 @@ namespace ApiEventConsumer.Subscribers
             {
                 var exchangeRate = GetExchangeRate();
                 var currencies = GetCurrencies();
-                var user = await GetUser(bet.PlayerId.ToString(), bet.OperatorId);
+                var user = await GetUser(bet.PlayerId.ToString(), bet.OperatorId ?? string.Empty);
                 var currency = currencies?.Where(c => c.Enabled == true && c.Name == bet.Currency && c.PartnerId == user?.OperatorId).FirstOrDefault();
 
-                if (currency == null)
+                if (currency == null || exchangeRate.Code == null || currency.Code == null)
                 {
                     return (double)bet.Amount;
                 }

@@ -7,9 +7,9 @@ namespace ApiEventConsumer.Database.Entities
     public class AccountInfoEntity : MiniGameBaseEntity
     {
         [BsonElement("id")]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
-        public string Avatar { get; set; }
+        public string? Avatar { get; set; }
 
         public DateTime JoinedOn { get; set; }
      
@@ -28,21 +28,21 @@ namespace ApiEventConsumer.Database.Entities
 
         public int AvatarId { get; set; }
 
-        public string Currency { get; set; }
+        public string? Currency { get; set; }
 
         [BsonElement("name")]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         [BsonElement("UID")]
         public int UID { get; set; }
 
-        public Security Security { get; set; }
+        public Security? Security { get; set; }
 
         public bool Disabled { get; set; }
 
         public bool InRoom { get; set; }
 
-        public string InGameRoom { get; set; }
+        public string? InGameRoom { get; set; }
 
         public byte Spins { get; set; }
 

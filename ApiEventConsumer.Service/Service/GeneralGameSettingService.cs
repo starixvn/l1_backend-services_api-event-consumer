@@ -27,7 +27,8 @@ namespace ApiEventConsumer.Service.Service
         {
             var gameInfo = await GetGameConfig(gameId);
 
-            var displayName = !string.IsNullOrEmpty(gameInfo.DisplayName) ? gameInfo.DisplayName : Game.FromGameName(gameInfo.Name).DisplayName;
+            var displayName = !string.IsNullOrEmpty(gameInfo.DisplayName) ? gameInfo.DisplayName : 
+                !string.IsNullOrEmpty(gameInfo.Name) ? Game.FromGameName(gameInfo.Name).DisplayName : string.Empty;
             return displayName;
         }
 
@@ -56,7 +57,7 @@ namespace ApiEventConsumer.Service.Service
                     GameId = g.GameId,
                     Name = g.Name,
                     DisplayName = g.DisplayName
-                }).FirstOrDefault(game => game.GameId == gameId));
+                }).FirstOrDefault(game => game.GameId == gameId)) ?? new GameConfigEntity { GameId = gameId };
         }
     }
 }

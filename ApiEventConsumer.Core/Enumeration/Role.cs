@@ -9,7 +9,7 @@
         public static readonly Role Admin = new Role(AdminValue, "Admin");
 
 
-        public Role()
+        public Role() : base("default", "Default Role")
         {
         }
 

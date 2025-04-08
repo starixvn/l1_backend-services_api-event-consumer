@@ -4,28 +4,28 @@ namespace ApiEventConsumer.Subscribers
 {
     public class SubscriberSettings
     {
-        public SubcriberDatabase SC { get; set; }
+        public SubcriberDatabase? SC { get; set; }
 
-        public SubcriberDatabase VG { get; set; }
+        public SubcriberDatabase? VG { get; set; }
 
-        public SubcriberDatabase SN { get; set; }
+        public SubcriberDatabase? SN { get; set; }
     }
 
     public class SubcriberDatabase
     {
-        public StreamSettings StreamSettings { get; set; }
-        public string SystemType { get; set; }
+        public StreamSettings? StreamSettings { get; set; }
+        public string? SystemType { get; set; }
     }
 
     public class StreamSettings
     {
-        public string Host { get; set; }
+        public string? Host { get; set; }
 
-        public string StreamName { get; set; }
+        public string? StreamName { get; set; }
 
-        public string Prefix { get; set; }
+        public string? Prefix { get; set; }
 
-        public string SubjectPrefix { get; set; }
+        public string? SubjectPrefix { get; set; }
 
         public bool Enable { get; set; }
 

@@ -12,6 +12,6 @@ namespace ApiEventConsumer.Service.Service
 
     public class GameConfigResponse
     {
-        public GameConfigEntity Data { get; set; }
+        public GameConfigEntity? Data { get; set; }
     }
 }

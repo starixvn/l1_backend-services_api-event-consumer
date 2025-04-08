@@ -5,10 +5,6 @@ namespace ApiEventConsumer.Core.Enumeration
 {
     public class Enumeration : IComparable
     {
-        protected Enumeration()
-        {
-        }
-
         protected Enumeration(string value, string displayName)
         {
             Value = value;
@@ -36,7 +32,7 @@ namespace ApiEventConsumer.Core.Enumeration
             try
             {
                 var matchingItem = Parse<T, string>(value, "value", item => item.Value == value);
-                return matchingItem != null;
+                return matchingItem is not null;
             }
             catch (Exception)
             {
@@ -54,7 +50,7 @@ namespace ApiEventConsumer.Core.Enumeration
                 var instance = new T();
                 var locatedValue = info.GetValue(instance) as T;
 
-                if (locatedValue != null)
+                if (locatedValue is not null)
                 {
                     yield return locatedValue;
                 }
@@ -67,12 +63,16 @@ namespace ApiEventConsumer.Core.Enumeration
 
             foreach (var info in fields)
             {
-                object instance = Activator.CreateInstance(type);
-                yield return info.GetValue(instance);
+                var instance = Activator.CreateInstance(type);
+                var value = info.GetValue(instance);
+                if (value is not null)
+                {
+                    yield return value;
+                }
             }
         }
 
-        public static bool operator ==(Enumeration left, Enumeration right)
+        public static bool operator ==(Enumeration? left, Enumeration? right)
         {
             return left is null ? right is null : !(right is null) && left.Value == right.Value;
         }
@@ -82,16 +82,15 @@ namespace ApiEventConsumer.Core.Enumeration
             return !(left == right);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
-            if (obj == null)
+            if (obj is null)
             {
                 return false;
             }
 
             var otherValue = obj as Enumeration;
-
-            if (otherValue == null)
+            if (otherValue is null)
             {
                 return false;
             }
@@ -112,13 +111,9 @@ namespace ApiEventConsumer.Core.Enumeration
             return DisplayName;
         }
 
-        public virtual int CompareTo(object obj)
+        public virtual int CompareTo(object? obj)
         {
-            if (obj == null)
-            {
-                throw new ArgumentNullException(nameof(obj));
-            }
-
+            ArgumentNullException.ThrowIfNull(obj);
             return Value.CompareTo(((Enumeration)obj).Value);
         }
 

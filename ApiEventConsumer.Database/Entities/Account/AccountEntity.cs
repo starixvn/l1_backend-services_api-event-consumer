@@ -8,13 +8,13 @@ namespace ApiEventConsumer.Database.Entities
     public class AccountEntity : MiniGameBaseEntity
     {
         [BsonElement("local")]
-        public LocalAccount Local { get; set; }
+        public LocalAccount? Local { get; set; }
 
-        public string UserIdStr { get; set; }
+        public string? UserIdStr { get; set; }
 
-        public string OperatorId { get; set; }
+        public string? OperatorId { get; set; }
 
-        public string PlayerId { get; set; }
+        public string? PlayerId { get; set; }
     }
 
     public class LocalAccount
@@ -26,21 +26,21 @@ namespace ApiEventConsumer.Database.Entities
         public bool Ban_login { get; set; }
 
         [BsonElement("username")]
-        public string Username { get; set; }
+        public string? Username { get; set; }
 
         [BsonElement("password")]
-        public string Password { get; set; }
+        public string? Password { get; set; }
 
         [BsonElement("regDate")]
-        public DateTime regDate { get; set; }
+        public DateTime? regDate { get; set; }
 
         [BsonElement("memberId")]
-        public string MemberId { get; set; }
+        public string? MemberId { get; set; }
 
         [BsonElement("memberName")]
-        public string MemberName { get; set; }
+        public string? MemberName { get; set; }
 
         [BsonElement("language")]
-        public string Language { get; set; }
+        public string? Language { get; set; }
     }
 }

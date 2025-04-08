@@ -1,15 +1,10 @@
-﻿using System.Text;
-using System.Text.Json;
-using ApiEventConsumer._Shared.Configurations;
+﻿using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Api._Shared.Helpers;
-using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Service.Service;
-using NATS.Client;
-using NATS.Client.JetStream;
 using Sentry;
 
 namespace ApiEventConsumer.Subscribers.SN

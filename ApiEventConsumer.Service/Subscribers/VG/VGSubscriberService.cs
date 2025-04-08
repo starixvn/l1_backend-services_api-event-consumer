@@ -6,11 +6,6 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using Sentry;
-using NATS.Client;
-using ApiEventConsumer.Core.Models.NatMessage;
-using System.Text.Json;
-using System.Text;
-using NATS.Client.JetStream;
 
 namespace ApiEventConsumer.Subscribers.VG
 {

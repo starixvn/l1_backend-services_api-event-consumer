@@ -10,12 +10,12 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 
         public double CrashAtBase { get; set; } = 0;
 
-        public MultiplierConfig MultiplierConfigs { get; set; }
+        public MultiplierConfig? MultiplierConfigs { get; set; }
     }
 
     public class MultiplierConfig
     {
-        public List<MultiplierStage> Stages { get; set; }
+        public List<MultiplierStage>? Stages { get; set; }
 
         public double InitialMultiplier { get; set; }
     }

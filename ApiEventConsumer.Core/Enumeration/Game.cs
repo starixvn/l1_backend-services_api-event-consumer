@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ApiEventConsumer.Core.Constants;
+﻿using ApiEventConsumer.Core.Constants;
 using ApiEventConsumer.Core.Games;
 
 namespace ApiEventConsumer.Core.Enumeration
@@ -185,7 +180,7 @@ namespace ApiEventConsumer.Core.Enumeration
         public static readonly Game Bac101 = new Game(Bac101Value, "Speed Baccarat 3", GameId.Bac101);
         public static readonly Game Bac102 = new Game(Bac102Value, "Baccarat Lobby", GameId.Bac102);
         public static readonly Game SevenUpDown = new Game(SevenUpDownValue, "7 Up 7 Down", GameId.SevenUpDown);
-        public Game()
+        public Game() : base("default", "Default Game")
         {
         }
 
@@ -320,9 +315,8 @@ namespace ApiEventConsumer.Core.Enumeration
             return normalGame.Concat(gameSettings);
         }
 
-        public static IEnumerable<Game> BaccaratXGames => new Game[]
-        {
+        public static IEnumerable<Game> BaccaratXGames => [
             Bac81, Bac82, Bac83, Bac84, Bac85, Bac86, Bac87, Bac88, Bac89, Bac90, Bac91, Bac92, Bac97, Bac98, Bac100, Bac101
-        };
+        ];
     }
 }

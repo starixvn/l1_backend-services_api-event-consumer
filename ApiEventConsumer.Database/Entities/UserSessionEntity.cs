@@ -10,15 +10,15 @@ namespace ApiEventConsumer.Database.Entities
         public DateTime RecheckInTime { get; set; }
 
         [BsonElement("partnerId")]
-        public string ParnerId { get; set; }
+        public string? ParnerId { get; set; }
 
         [BsonElement("browserUserAgent")]
-        public string BrowserUserAgent { get; set; }
+        public string? BrowserUserAgent { get; set; }
 
         [BsonElement("playerId")]
-        public string PlayerId { get; set; }
+        public string? PlayerId { get; set; }
 
         [BsonElement("ip")]
-        public string Ip { get; set; }
+        public string? Ip { get; set; }
     }
 }

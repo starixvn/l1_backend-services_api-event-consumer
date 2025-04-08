@@ -20,20 +20,22 @@ namespace ApiEventConsumer.Database
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
-        public static string? GetCollectionName(Type documentType)
+        public static string GetCollectionName(Type documentType)
         {
-            return ((BsonCollectionAttribute)documentType.GetCustomAttributes(
+            var attribute = documentType.GetCustomAttributes(
                     typeof(BsonCollectionAttribute),
                     true)
-                .FirstOrDefault())?.CollectionName;
+                .FirstOrDefault() as BsonCollectionAttribute;
+            return attribute?.CollectionName ?? documentType.Name.ToLower();
         }
 
         public static string GetDatabaseName(Type documentType)
         {
-            return ((BsonDatabaseAttribute)documentType.GetCustomAttributes(
+            var attribute = documentType.GetCustomAttributes(
                     typeof(BsonDatabaseAttribute),
                     true)
-                .FirstOrDefault())?.DatabaseName;
+                .FirstOrDefault() as BsonDatabaseAttribute;
+            return attribute?.DatabaseName ?? "default";
         }
     }
 }

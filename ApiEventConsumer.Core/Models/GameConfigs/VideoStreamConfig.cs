@@ -1,4 +1,6 @@
-﻿namespace ApiEventConsumer.Core.Models.GameConfigs
+﻿using Newtonsoft.Json;
+
+namespace ApiEventConsumer.Core.Models.GameConfigs
 {
 	public class VideoStreamConfig
 	{
@@ -11,7 +13,7 @@
 
         public void PopulateFromJson(string jsonData)
         {
-            var videoData = Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, int>>(jsonData);
+            var videoData = JsonConvert.DeserializeObject<Dictionary<string, int>>(jsonData);
             if (videoData != null)
             {
                 VideoInfos = videoData.Select(videoInfo => new VideoInfo
@@ -25,7 +27,7 @@
 
 	public class VideoInfo
 	{
-		public string VideoName { get; set; }
+		public string? VideoName { get; set; }
 
 		public int NumberOfVideos { get; set; }
 	}

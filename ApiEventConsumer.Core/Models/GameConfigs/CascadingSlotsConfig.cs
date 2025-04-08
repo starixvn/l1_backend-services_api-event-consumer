@@ -26,11 +26,11 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
 
         public byte Mode { get; set; }
         public double BigWinRatio { get; set; }
-        public MultiplierBonus MultiplierBonus { get; set; }
-        public int[] BetLevels { get; set; }
+        public MultiplierBonus? MultiplierBonus { get; set; }
+        public int[]? BetLevels { get; set; }
         public double BetMultiplier { get; set; }
         public double MaxWinPerRound { get; set; }
-        public Dictionary<string, List<OddsByCount>> OddsByCounts { get; set; }
-        public FreeSpins FreeSpins { get; set; }
+        public Dictionary<string, List<OddsByCount>>? OddsByCounts { get; set; }
+        public FreeSpins? FreeSpins { get; set; }
     }
 }

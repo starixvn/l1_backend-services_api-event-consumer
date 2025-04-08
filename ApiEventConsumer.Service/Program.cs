@@ -3,7 +3,6 @@ using TinyHealthCheck;
 using ApiEventConsumer.Subscribers;
 using MongoDB.Driver;
 using Sentry;
-using Sentry.Protocol;
 
 namespace ApiEventConsumer
 {
@@ -13,7 +12,7 @@ namespace ApiEventConsumer
         public static async Task Main(string[] args)
         {
             IHost host = CreateHostBuilder(args).Build();
-            SentrySdk.CaptureMessage($"{DateTime.Now} - Start ApiEventConsumer", SentryLevel.Info);
+            SentrySdk.CaptureMessage($"{DateTimeOffset.UtcNow} - Start ApiEventConsumer");
 
             await host.RunAsync();
         }
@@ -27,7 +26,7 @@ namespace ApiEventConsumer
                     {
                         config.Port = appSettings.Port;
                         config.UrlPath = "/";
-                        //config.Hostname = "*";
+                        config.Hostname = "*";
 
                         return config;
                     });

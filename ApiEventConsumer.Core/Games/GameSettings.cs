@@ -5,30 +5,23 @@ namespace ApiEventConsumer.Core.Games
     public class GameSettings
     {
         public int GameId { get; set; }
-        public string GameName { get; set; }
-        public string DisplayName { get; set; }
-        public IEnumerable<string> BetChoices { get; set; }
-        public IEnumerable<string> Odds { get; set; }
-        public IEnumerable<string> OfferedSystem { get; set; }
+        public string? GameName { get; set; }
+        public string? DisplayName { get; set; }
+        public IEnumerable<string>? BetChoices { get; set; }
+        public IEnumerable<string>? Odds { get; set; }
+        public IEnumerable<string>? OfferedSystem { get; set; }
     }
 
     public class GamesSettings
     {
-        private static GamesSettings _instance;
+        private static GamesSettings? _instance;
 
         public static GamesSettings GetGamesSettings()
         {
-            if (_instance == null)
-            {
-                if (_instance == null)
-                {
-                    _instance = new GamesSettings();
-                }
-            }
-            return _instance;
+            return _instance ??= new GamesSettings();
         }
 
-        public IEnumerable<GameSettings> Games { get; }
+        public IEnumerable<GameSettings>? Games { get; }
 
         public GamesSettings()
         {
@@ -41,14 +34,14 @@ namespace ApiEventConsumer.Core.Games
             return File.ReadAllText(path);
         }
 
-        public GameSettings GetGameFromName(string gameName)
+        public GameSettings? GetGameFromName(string gameName)
         {
-            return Games.FirstOrDefault(game => game.GameName == gameName);
+            return Games?.FirstOrDefault(game => game.GameName == gameName);
         }
 
-        public GameSettings GetGameFromId(int gameId)
+        public GameSettings? GetGameFromId(int gameId)
         {
-            return Games.FirstOrDefault(game => game.GameId == gameId);
+            return Games?.FirstOrDefault(game => game.GameId == gameId);
         }
     }
 }

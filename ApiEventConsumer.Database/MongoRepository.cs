@@ -124,17 +124,17 @@ namespace ApiEventConsumer.Database
             await _collection.DeleteManyAsync(filterExpression);
         }
 
-        public void Update(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions options = null)
+        public void Update(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions? options = null)
         {
             _collection.UpdateOne(filterExpression, updateDefinition, options);
         }
 
-        public async Task UpdateAsync(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions options = null)
+        public async Task UpdateAsync(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions? options = null)
         {
             await _collection.UpdateOneAsync(filterExpression, updateDefinition, options);
         }
 
-        public async Task UpdateManyAsync(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions options = null)
+        public async Task UpdateManyAsync(Expression<Func<TDocument, bool>> filterExpression, UpdateDefinition<TDocument> updateDefinition, UpdateOptions? options = null)
         {
             await _collection.UpdateManyAsync(filterExpression, updateDefinition, options);
         }

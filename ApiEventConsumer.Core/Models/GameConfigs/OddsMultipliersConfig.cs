@@ -22,7 +22,7 @@ namespace ApiEventConsumer.Core.Models.GameConfigs
         }
 
         public NumberOfCardsRange NumberOfCardsRange { get; set; } = new NumberOfCardsRange();
-        public List<MultiplierDistribution> Values { get; set; }
+        public List<MultiplierDistribution>? Values { get; set; }
     }
 
     public class NumberOfCardsRange

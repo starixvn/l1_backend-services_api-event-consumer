@@ -12,7 +12,7 @@
             AdditionalOdds = additionalOdds;
         }
 
-        public List<FreeSpinsOdds> InitialOdds { get; set; }
-        public List<FreeSpinsOdds> AdditionalOdds { get; set; }
+        public List<FreeSpinsOdds>? InitialOdds { get; set; }
+        public List<FreeSpinsOdds>? AdditionalOdds { get; set; }
     }
 }
