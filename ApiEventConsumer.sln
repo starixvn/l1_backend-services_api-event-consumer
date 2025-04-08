@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiEventConsumer.Database",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiEventConsumer.Core", "ApiEventConsumer.Core\ApiEventConsumer.Core.csproj", "{7C3783D3-CE3B-42B6-92A0-0B6116B562E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiEventConsumer.Service.Tests", "ApiEventConsumer.Service.Tests\ApiEventConsumer.Service.Tests.csproj", "{851A7562-AB5D-4038-A19B-4DCF6B024C44}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{7C3783D3-CE3B-42B6-92A0-0B6116B562E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C3783D3-CE3B-42B6-92A0-0B6116B562E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7C3783D3-CE3B-42B6-92A0-0B6116B562E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{851A7562-AB5D-4038-A19B-4DCF6B024C44}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{851A7562-AB5D-4038-A19B-4DCF6B024C44}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{851A7562-AB5D-4038-A19B-4DCF6B024C44}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{851A7562-AB5D-4038-A19B-4DCF6B024C44}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

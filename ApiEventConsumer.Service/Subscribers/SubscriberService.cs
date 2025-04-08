@@ -207,7 +207,7 @@ namespace ApiEventConsumer.Subscribers
             ConfigureSubscription(jsContext, streamName);
         }
 
-        private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
+        public void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
         {
             var streamConfig = StreamConfiguration.Builder()
                 .WithName(streamName)
@@ -246,7 +246,7 @@ namespace ApiEventConsumer.Subscribers
             _betCreatedSub.Start();
         }
 
-        private async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
+        public async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -329,18 +329,18 @@ namespace ApiEventConsumer.Subscribers
             _disposed = true;
         }
 
-        private double GetHighStakeAmount()
+        public double GetHighStakeAmount()
         {
             return appSettings.CloudSettings?.IsCloudService == true ? DefaultHighStakeAmount : 
                 appSettings.ChatBotApiSettings?.HighStakeAmount ?? DefaultHighStakeAmount;
         }
 
-        private async Task<double> GetAmount(BetCreated bet)
+        public async Task<double> GetAmount(BetCreated bet)
         {
             return appSettings.CloudSettings?.IsCloudService == true ? (double)bet.Amount : await CalAmountOnBaseCurrency(bet);
         }
 
-        private async Task<double> CalAmountOnBaseCurrency(BetCreated bet)
+        public async Task<double> CalAmountOnBaseCurrency(BetCreated bet)
         {
             try
             {
@@ -364,7 +364,7 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        private async Task<string> GetGameName(int gameId)
+        public async Task<string> GetGameName(int gameId)
         {
             return gameId switch
             {
@@ -381,7 +381,7 @@ namespace ApiEventConsumer.Subscribers
                $"playerId: {bet.PlayerId}" : await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
         }
 
-        private static string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
+        public string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
         {
             var systemPrefix = GetSystemPrefixName(systemType);
 
@@ -427,7 +427,7 @@ namespace ApiEventConsumer.Subscribers
                  : string.Empty;
         }
 
-        private static string GetSystemPrefixName(string systemType)
+        public static string GetSystemPrefixName(string systemType)
         {
             return systemType switch
             {
@@ -438,7 +438,7 @@ namespace ApiEventConsumer.Subscribers
             };
         }
 
-        private async Task<string> GetDeviceInformation(string playerId)
+        public async Task<string> GetDeviceInformation(string playerId)
         {
             try
             {
@@ -480,7 +480,7 @@ namespace ApiEventConsumer.Subscribers
             return exchangeRate;
         }
 
-        private IEnumerable<CurrencyEntity> GetCurrencies()
+        public IEnumerable<CurrencyEntity> GetCurrencies()
         {
             var currencies = cache.GetCache<IEnumerable<CurrencyEntity>>(CachedKeys.Currencies.ToString());
             if (currencies == default)
@@ -492,7 +492,7 @@ namespace ApiEventConsumer.Subscribers
             return currencies;
         }
 
-        private async Task<AccountEntity> GetUser(string ObCustId, string operatorId)
+        public async Task<AccountEntity> GetUser(string ObCustId, string operatorId)
         {
             var userKey = string.Format("{0}{1}", CachedKeys.User, ObCustId);
             var user = cache.GetCache<AccountEntity>(userKey);
