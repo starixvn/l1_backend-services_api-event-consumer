@@ -7,7 +7,6 @@ namespace ApiEventConsumer._Shared.Configurations
     {
         public int Port { get; set; }
         public SubscriberSettings? SubcriberSettings { get; set; }
-        public CloudSettings? CloudSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
@@ -17,31 +16,10 @@ namespace ApiEventConsumer._Shared.Configurations
     {
         public int Port { get; set; }
         public SubscriberSettings? SubcriberSettings { get; set; }
-        public CloudSettings? CloudSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
 
-    }
-
-    public class CloudSettings
-    {
-        public bool IsCloudService { get; set; }
-
-        public bool EnableCloud { get; set; }
-
-        public string? CloudAdminApiUrl { get; set; }
-
-        public string? ProxyUrl { get; set; }
-
-        public string? GameManagementUrl { get; set; }
-
-        public IEnumerable<int>? CloudGameIds { get; set; }
-
-        public bool IsCloudGame(int gameTypeId) => CloudGameIds != null && CloudGameIds.Contains(gameTypeId);
-
-        public bool ShouldCallCloudService(int gameTypeId)
-            => !IsCloudService && IsCloudGame(gameTypeId);
     }
 
     public class ChatBotApiSettings

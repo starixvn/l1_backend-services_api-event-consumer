@@ -1,14 +1,9 @@
-﻿using Xunit;
-using Moq;
+﻿using Moq;
 using FluentAssertions;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
-using ApiEventConsumer.Core.Enumeration;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
-using System;
 
 namespace ApiEventConsumer.Service.Tests.Service
 {
@@ -17,18 +12,13 @@ namespace ApiEventConsumer.Service.Tests.Service
         private readonly Mock<IGenericRepository<GameConfigEntity>> _mockRepository;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<IAppSettings> _mockAppSettings;
-        private readonly Mock<CloudSettings> _mockCloudSettings;
-        private readonly Mock<IGameManagementApi> _mockGameManagementApi;
 
         public GeneralGameSettingServiceTests()
         {
             _mockRepository = new Mock<IGenericRepository<GameConfigEntity>>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockAppSettings = new Mock<IAppSettings>();
-            _mockCloudSettings = new Mock<CloudSettings>();
-            _mockGameManagementApi = new Mock<IGameManagementApi>();
 
-            _mockAppSettings.Setup(x => x.CloudSettings).Returns(_mockCloudSettings.Object);
         }
 
         [Fact]

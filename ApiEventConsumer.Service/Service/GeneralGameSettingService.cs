@@ -45,19 +45,7 @@ namespace ApiEventConsumer.Service.Service
 
         public async Task<GameConfigEntity> GetGameConfig(int gameId)
         {
-            if (appSettings.CloudSettings?.ShouldCallCloudService(gameId) == true)
-            {
-                return await GetGameConfigThroughGameManagementApi(gameId);
-            }
-
             return await GetGameConfigDirectOnKbtDatabase(gameId);
-        }
-
-        private async Task<GameConfigEntity> GetGameConfigThroughGameManagementApi(int gameId)
-        {
-            var gameManagementApi = serviceProvider.GetRequiredService<IGameManagementApi>();
-            var response = await gameManagementApi.GetGameConfigById(gameId);
-            return response?.Data ?? new GameConfigEntity { GameId = gameId };
         }
 
         private async Task<GameConfigEntity> GetGameConfigDirectOnKbtDatabase(int gameId)

@@ -84,9 +84,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             );
 
             // Correct way to setup nested properties
-            _mockAppSettings
-                .SetupGet(x => x.CloudSettings)
-                .Returns(new CloudSettings { IsCloudService = true });
+
         }
 
         private class TestSubscriberService : SubscriberService

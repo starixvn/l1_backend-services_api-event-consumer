@@ -335,13 +335,12 @@ namespace ApiEventConsumer.Subscribers
 
         public double GetHighStakeAmount()
         {
-            return appSettings.CloudSettings?.IsCloudService == true ? DefaultHighStakeAmount : 
-                appSettings.ChatBotApiSettings?.HighStakeAmount ?? DefaultHighStakeAmount;
+            return appSettings.ChatBotApiSettings?.HighStakeAmount ?? DefaultHighStakeAmount;
         }
 
         public async Task<double> GetAmount(BetCreated bet)
         {
-            return appSettings.CloudSettings?.IsCloudService == true ? (double)bet.Amount : await CalAmountOnBaseCurrency(bet);
+            return await CalAmountOnBaseCurrency(bet);
         }
 
         public async Task<double> CalAmountOnBaseCurrency(BetCreated bet)
@@ -381,8 +380,7 @@ namespace ApiEventConsumer.Subscribers
 
         private async Task<string> GetCharName(BetCreated bet)
         {
-            return appSettings.CloudSettings?.IsCloudService == true ?
-               $"playerId: {bet.PlayerId}" : await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
+            return await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
         }
 
         public string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
@@ -446,11 +444,6 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                if (appSettings.CloudSettings?.IsCloudService == true)
-                {
-                    return string.Empty;
-                }
-
                 var projectionUserSession = Builders<UserSessionEntity>.Projection
                      .Include(x => x.PlayerId)
                      .Include(x => x.Ip)
