@@ -197,17 +197,6 @@ namespace ApiEventConsumer.Core.Enumeration
 
         public GameId GameId { get; }
 
-        public static Game FromGameId(GameId id)
-        {
-            var gameSettings = GamesSettings.GetGamesSettings().GetGameFromId((int)id);
-            if (gameSettings?.GameId > 0)
-            {
-                GameId a = (GameId)gameSettings.GameId;
-                return new Game(gameSettings.GameName ?? string.Empty, gameSettings.DisplayName ?? string.Empty, a);
-            }
-            return Parse<Game, GameId>(id, "game id", item => item.GameId == id);
-        }
-
         public static Game FromGameName(string gameName)
         {
             var gameSettings = GamesSettings.GetGamesSettings().GetGameFromName(gameName);
