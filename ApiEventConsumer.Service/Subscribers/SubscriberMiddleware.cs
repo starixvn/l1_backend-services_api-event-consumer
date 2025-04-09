@@ -5,9 +5,9 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers.SC;
-using ApiEventConsumer.Subscribers.SN;
 using ApiEventConsumer.Subscribers.VG;
 using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Subscribers.GN;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -20,7 +20,7 @@ namespace ApiEventConsumer.Subscribers
             services.AddSingleton(settings);
             services.AddHostedService<SCSubscriberService>();
             services.AddHostedService<VGSubcriberService>();
-            services.AddHostedService<SNSubscriberService>();
+            services.AddHostedService<GNSubscriberService>();
 
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();

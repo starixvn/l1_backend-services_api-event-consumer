@@ -49,7 +49,7 @@ namespace ApiEventConsumer.Subscribers
         private IConnection? _connection;
         private IAsyncSubscription? _betCreatedSub;
 
-        private const string HighStakeMessageTemplate = "Event {0} - {1} - {2} - {3} - {4} {5}";
+        private const string HighStakeMessageTemplate = "Event: {0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 

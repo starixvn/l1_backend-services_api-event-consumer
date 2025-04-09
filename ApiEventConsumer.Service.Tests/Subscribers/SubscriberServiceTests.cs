@@ -17,7 +17,6 @@ using ApiEventConsumer.Core.Constants;
 using ApiEventConsumer.Core.Enumeration;
 using NATS.Client.JetStream;
 using NATS.Client;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -113,6 +112,11 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             protected override string GetSystemTypePath() => "TEST";
             protected override string GetStreamNamePath() => "test.stream";
+
+            protected override string GetBetMessages()
+            {
+                throw new NotImplementedException();
+            }
         }
 
         [Fact]

@@ -1,17 +1,17 @@
 ﻿using ApiEventConsumer._Shared.Configurations;
 using Sentry;
 
-namespace ApiEventConsumer.Subscribers.SN
+namespace ApiEventConsumer.Subscribers.GN
 {
-    public interface ISNSubscriberService : ISubscriberService
+    public interface IGNSubscriberService : ISubscriberService
     {
     }
 
-    public class SNSubscriberService : SubscriberService, ISNSubscriberService
+    public class GNSubscriberService : SubscriberService, IGNSubscriberService
     {
         private const string BaseCode = "USD";
         private readonly IAppSettings appSettings;
-        public SNSubscriberService(
+        public GNSubscriberService(
             ISentryClient sentryClient,
             ILogger<SubscriberService> _logger,
             SubscriberService.ConfigurationDependencies configurations,
@@ -29,20 +29,20 @@ namespace ApiEventConsumer.Subscribers.SN
 
         protected override string GetBetMessages()
         {
-            if (appSettings.SubcriberSettings?.SN?.BetMessages == null)
+            if (appSettings.SubcriberSettings?.GN?.BetMessages == null)
             {
                 return string.Empty;
             }
-            return appSettings.SubcriberSettings.SN.BetMessages;
+            return appSettings.SubcriberSettings.GN.BetMessages;
         }
 
         protected override string GetStreamNamePath()
         {
-            if (appSettings.SubcriberSettings?.SN?.StreamName == null)
+            if (appSettings.SubcriberSettings?.GN?.StreamName == null)
             {
                 return string.Empty;
             }
-            return appSettings.SubcriberSettings.SN.StreamName;
+            return appSettings.SubcriberSettings.GN.StreamName;
         }
 
         protected override StreamSettings GetStreamSettingsPath()
@@ -56,11 +56,11 @@ namespace ApiEventConsumer.Subscribers.SN
 
         protected override string GetSystemTypePath()
         {
-            if (appSettings.SubcriberSettings?.SN?.SystemType == null)
+            if (appSettings.SubcriberSettings?.GN?.SystemType == null)
             {
                 return string.Empty;
             }
-            return appSettings.SubcriberSettings.SN.SystemType;
+            return appSettings.SubcriberSettings.GN.SystemType;
         }
     }
 }

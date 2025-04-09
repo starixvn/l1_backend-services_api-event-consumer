@@ -8,7 +8,7 @@ namespace ApiEventConsumer.Subscribers
 
         public SubcriberDatabase? VG { get; set; }
 
-        public SubcriberDatabase? SN { get; set; }
+        public SubcriberDatabase? GN { get; set; }
     }
 
     public class SubcriberDatabase
