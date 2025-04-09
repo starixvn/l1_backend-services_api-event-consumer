@@ -37,7 +37,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly Mock<IGameUserService> _mockGameUserService;
         private readonly Mock<IGeneralGameSettingService> _mockGeneralGameSettingService;
         private readonly Mock<IChatBotApi> _mockChatBotApi;
-        private readonly Mock<StreamSettings> _mockStreamSettings;
+        private readonly Mock<StreamConfig> _mockStreamConfig;
         private readonly Mock<IConnectionFactory> _mockConnectionFactory;
 
         private readonly SubscriberService.ConfigurationDependencies _configDependencies;
@@ -60,7 +60,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             _mockGameUserService = new Mock<IGameUserService>();
             _mockGeneralGameSettingService = new Mock<IGeneralGameSettingService>();
             _mockChatBotApi = new Mock<IChatBotApi>();
-            _mockStreamSettings = new Mock<StreamSettings>();
+            _mockStreamConfig = new Mock<StreamConfig>();
             _mockConnectionFactory = new Mock<IConnectionFactory>();
 
             // Setup dependencies
@@ -91,7 +91,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
         private class TestSubscriberService : SubscriberService
         {
-            private readonly StreamSettings _streamSettings;
+            private readonly StreamConfig _streamSettings;
 
             public TestSubscriberService(
                 ISentryClient sentryClient,
@@ -99,13 +99,13 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 ConfigurationDependencies configurations,
                 RepositoryDependencies repositories,
                 ServiceDependencies services,
-                StreamSettings streamSettings)
+                StreamConfig streamSettings)
                 : base("TEST", sentryClient, logger, configurations, repositories, services)
             {
                 _streamSettings = streamSettings;
             }
 
-            protected override StreamSettings GetStreamSettingsPath()
+            protected override StreamConfig GetStreamConfigPath()
             {
                 return _streamSettings;
             }
@@ -115,7 +115,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             protected override string GetBetMessages()
             {
-                throw new NotImplementedException();
+                return "api.bet.created";
             }
         }
 
@@ -351,7 +351,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 _configDependencies,
                 _repoDependencies,
                 _serviceDependencies,
-                _mockStreamSettings.Object
+                _mockStreamConfig.Object
             );
         }
 
@@ -359,7 +359,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void InitializeNatsConnection_WhenStreamSettingsDisabled_DoesNotConnect()
         {
             // Arrange
-            var streamSettings = new StreamSettings { Enable = false };
+            var streamSettings = new StreamConfig { Enable = false };
             var service = CreateService(streamSettings);
 
             // Act
@@ -373,7 +373,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             Assert.Null(connection);
         }
 
-        private TestSubscriberService CreateService(StreamSettings streamSettings)
+        private TestSubscriberService CreateService(StreamConfig streamSettings)
         {
             var configDeps = new SubscriberService.ConfigurationDependencies(
                 _mockConfiguration.Object,
@@ -408,7 +408,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void HandleBetCreated_ValidMessage_ProcessesSuccessfully()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var betCreated = new BetCreated
             {
                 PlayerId = 123,
@@ -439,7 +439,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void HandleBetCreated_InvalidMessage_HandlesError()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var invalidMessage = "invalid json";
             var msgArgs = new MsgHandlerEventArgs(
                 new Msg("subject", Encoding.UTF8.GetBytes(invalidMessage)));
@@ -459,7 +459,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetDeviceInformation_ValidUser_ReturnsDeviceInfo()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var userSession = new UserSessionEntity
             {
                 PlayerId = "123",
@@ -482,12 +482,11 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task StartAsync_InitializesNatsConnection()
         {
             // Arrange
-            var streamSettings = new StreamSettings 
+            var streamConfig = new StreamConfig
             { 
-                Enable = true,
-                Host = "nats://localhost:4222"
+                Enable = true
             };
-            var service = CreateService(streamSettings);
+            var service = CreateService(streamConfig);
             
             var mockConnection = new Mock<IConnection>();
             mockConnection
@@ -497,7 +496,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var mockFactory = new Mock<IConnectionFactory>();
             mockFactory
                 .Setup(x => x.CreateConnection(
-                    It.Is<string>(url => url == streamSettings.Host),
                     It.Is<bool>(reconnect => reconnect == false)))
                 .Returns(mockConnection.Object);
 
@@ -519,7 +517,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task StopAsync_DisposesAllResources()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var mockConnection = new Mock<IConnection>();
             var mockSubscription = new Mock<IAsyncSubscription>();
 
@@ -564,7 +562,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetDeviceInformation_NoSession_ReturnsUnknown()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             _mockUserSessionRepo
                 .Setup(x => x.Collection())
                 .Returns(MockMongoCollection<UserSessionEntity>(new List<UserSessionEntity>()));
@@ -579,7 +577,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         [Fact]
         public void ConfigureJetStream_WhenConnectionNull_ReturnsEarly()
         {
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
 
             var method = typeof(SubscriberService).GetMethod("ConfigureJetStream", 
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -600,7 +598,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task CalAmountOnBaseCurrency_WhenExceptionOccurs_ReturnsBetAmount()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var bet = new BetCreated { Amount = 100, Currency = "USD" };
             _mockExchangeRateRepo
                 .Setup(x => x.AsQueryable())
@@ -621,7 +619,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetGameName_ForDifferentGames_ReturnsCorrectName(GameId gameId, string? expectedName)
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             if (expectedName == null)
             {
                 _mockGeneralGameSettingService
@@ -641,7 +639,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void Dispose_WhenCalledMultipleTimes_OnlyDisposesOnce()
         {
             // Arrange
-            var service = CreateService(new StreamSettings { Enable = true });
+            var service = CreateService(new StreamConfig { Enable = true });
             var mockConnection = new Mock<IConnection>();
             var mockSubscription = new Mock<IAsyncSubscription>();
 

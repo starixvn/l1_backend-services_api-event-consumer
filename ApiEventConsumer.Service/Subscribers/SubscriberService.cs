@@ -141,7 +141,7 @@ namespace ApiEventConsumer.Subscribers
             uaParser = Parser.GetDefault();
         }
 
-        protected abstract StreamSettings GetStreamSettingsPath();
+        protected abstract StreamConfig GetStreamConfigPath();
         protected abstract string GetSystemTypePath();
         protected abstract string GetStreamNamePath();
         protected abstract string GetBetMessages();
@@ -163,7 +163,8 @@ namespace ApiEventConsumer.Subscribers
             try
             {
                 var streamSettings = appSettings.StreamSettings;
-                if (streamSettings?.Enable != true)
+                var streamConfig = GetStreamConfigPath();
+                if (streamSettings?.Enable != true || streamConfig?.Enable != true)
                 {
                     return;
                 }

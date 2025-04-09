@@ -30,20 +30,20 @@ namespace ApiEventConsumer.Subscribers.SC
 
         protected override string GetStreamNamePath()
         {
-            if (appSettings.SubcriberSettings?.SC?.StreamName == null)
+            if (appSettings.SubcriberSettings?.SC?.StreamConfig?.StreamName == null)
             {
                 return string.Empty;
             }
-            return appSettings.SubcriberSettings.SC.StreamName;
+            return appSettings.SubcriberSettings.SC.StreamConfig.StreamName ?? string.Empty;
         }
 
-        protected override StreamSettings GetStreamSettingsPath()
+        protected override StreamConfig GetStreamConfigPath()
         {
-            if (appSettings.StreamSettings == null)
+            if (appSettings.SubcriberSettings?.SC?.StreamConfig == null)
             {
-                return new StreamSettings();
+                return new StreamConfig();
             }
-            return appSettings.StreamSettings;
+            return appSettings.SubcriberSettings.SC.StreamConfig;
         }
 
         protected override string GetSystemTypePath()
@@ -57,11 +57,11 @@ namespace ApiEventConsumer.Subscribers.SC
 
         protected override string GetBetMessages()
         {
-            if (appSettings.SubcriberSettings?.SC?.BetMessages == null)
+            if (appSettings.SubcriberSettings?.SC?.StreamConfig?.BetMessages == null)
             {
                 return string.Empty;
             }
-            return appSettings.SubcriberSettings.SC.BetMessages;
+            return appSettings.SubcriberSettings.SC.StreamConfig.BetMessages ?? string.Empty;
         }
     }
 }

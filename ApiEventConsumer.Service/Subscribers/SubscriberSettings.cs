@@ -14,10 +14,16 @@ namespace ApiEventConsumer.Subscribers
     public class SubcriberDatabase
     {
         public string? SystemType { get; set; }
+        public StreamConfig? StreamConfig { get; set; }
+
+    }
+
+    public class StreamConfig
+    {
         public string? StreamName { get; set; }
         public string? BetMessages { get; set; }
         public string? SettledMessages { get; set; }
-    }
+        public bool? Enable { get; set; }
 
-    
+    }
 }
