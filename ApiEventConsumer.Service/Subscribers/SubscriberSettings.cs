@@ -1,6 +1,4 @@
-﻿using NATS.Client.JetStream;
-
-namespace ApiEventConsumer.Subscribers
+﻿namespace ApiEventConsumer.Subscribers
 {
     public class SubscriberSettings
     {
