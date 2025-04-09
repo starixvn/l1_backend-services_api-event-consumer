@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-namespace ApiEventConsumer.Core.Games
+﻿namespace ApiEventConsumer.Core.Games
 {
     public class GameSettings
     {
@@ -22,10 +20,6 @@ namespace ApiEventConsumer.Core.Games
         }
 
         public IEnumerable<GameSettings>? Games { get; }
-
-        public GamesSettings()
-        {
-        }
 
         public GameSettings? GetGameFromName(string gameName)
         {

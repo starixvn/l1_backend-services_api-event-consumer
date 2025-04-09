@@ -569,7 +569,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var result = await service.GetDeviceInformation("123");
 
             // Assert
-            Assert.Equal(string.Empty, result);
+            Assert.Equal("- Unknown", result);
         }
 
         [Fact]
