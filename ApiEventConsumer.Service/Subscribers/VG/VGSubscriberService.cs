@@ -28,23 +28,31 @@ namespace ApiEventConsumer.Subscribers.VG
             this.appSettings = configurations.AppSettings;
         }
 
-        protected override string GetStreamNamePath()
+        protected override string GetBetMessages()
         {
-            if (appSettings.SubcriberSettings?.VG?.StreamSettings == null)
+            if (appSettings.SubcriberSettings?.VG?.BetMessages == null)
             {
                 return string.Empty;
             }
-            var settings = appSettings.SubcriberSettings.VG.StreamSettings;
-            return $"{settings.StreamName}_{settings.Prefix}";
+            return appSettings.SubcriberSettings.VG.BetMessages;
+        }
+
+        protected override string GetStreamNamePath()
+        {
+            if (appSettings.SubcriberSettings?.VG?.StreamName == null)
+            {
+                return string.Empty;
+            }
+            return appSettings.SubcriberSettings.VG.StreamName;
         }
 
         protected override StreamSettings GetStreamSettingsPath()
         {
-            if (appSettings.SubcriberSettings?.VG?.StreamSettings == null)
+            if (appSettings.StreamSettings == null)
             {
                 return new StreamSettings();
             }
-            return appSettings.SubcriberSettings.VG.StreamSettings;
+            return appSettings.StreamSettings;
         }
 
         protected override string GetSystemTypePath()

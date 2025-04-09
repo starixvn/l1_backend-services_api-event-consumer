@@ -144,6 +144,7 @@ namespace ApiEventConsumer.Subscribers
         protected abstract StreamSettings GetStreamSettingsPath();
         protected abstract string GetSystemTypePath();
         protected abstract string GetStreamNamePath();
+        protected abstract string GetBetMessages();
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -161,8 +162,8 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                var streamSettings = GetStreamSettingsPath();
-                if (!streamSettings.Enable)
+                var streamSettings = appSettings.StreamSettings;
+                if (streamSettings?.Enable != true)
                 {
                     return;
                 }
@@ -196,6 +197,7 @@ namespace ApiEventConsumer.Subscribers
         private void ConfigureJetStream()
         {
             var streamName = GetStreamNamePath();
+            var betMessages = GetBetMessages();
             if (_connection == null)
             {
                 return;
@@ -205,7 +207,7 @@ namespace ApiEventConsumer.Subscribers
             var jsManagement = _connection.CreateJetStreamManagementContext();
 
             ConfigureStream(jsManagement, streamName);
-            ConfigureSubscription(jsContext, streamName);
+            ConfigureSubscription(jsContext, streamName, betMessages);
         }
 
         public void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
@@ -231,7 +233,7 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        private void ConfigureSubscription(IJetStream jsContext, string streamName)
+        private void ConfigureSubscription(IJetStream jsContext, string streamName, string betMessages)
         {
             var consumerConfig = ConsumerConfiguration.Builder()
                 .WithAckWait(30000)
@@ -243,7 +245,7 @@ namespace ApiEventConsumer.Subscribers
                 .WithConfiguration(consumerConfig)
                 .Build();
 
-            _betCreatedSub = jsContext.PushSubscribeAsync($"api.bet.created", HandleBetCreated, true, subscribeOptions);
+            _betCreatedSub = jsContext.PushSubscribeAsync(betMessages, HandleBetCreated, true, subscribeOptions);
             _betCreatedSub.Start();
         }
 
