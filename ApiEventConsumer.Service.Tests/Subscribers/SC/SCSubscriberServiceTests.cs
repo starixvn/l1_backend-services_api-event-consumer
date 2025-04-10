@@ -140,6 +140,61 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.SC
         }
 
         [Fact]
+        public void GetStreamNamePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedStreamName = "test.stream";
+            var settings = new SubscriberSettings
+            {
+                SC = new SubcriberDatabase
+                {
+                    StreamConfig = new StreamConfig
+                    {
+                        StreamName = expectedStreamName
+                    }
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetStreamNamePath");
+
+            // Assert
+            result.Should().Be(expectedStreamName);
+        }
+
+        [Fact]
+        public void GetStreamConfigPath_WhenSettingsExist_ReturnsCorrectConfig()
+        {
+            // Arrange
+            var expectedConfig = new StreamConfig
+            {
+                StreamName = "test.stream",
+                BetMessages = "test.bet",
+                Enable = true
+            };
+            var settings = new SubscriberSettings
+            {
+                SC = new SubcriberDatabase
+                {
+                    StreamConfig = expectedConfig
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<StreamConfig>(service, "GetStreamConfigPath");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.StreamName.Should().Be(expectedConfig.StreamName);
+            result.BetMessages.Should().Be(expectedConfig.BetMessages);
+            result.Enable.Should().Be(expectedConfig.Enable);
+        }
+
+        [Fact]
         public void GetSystemTypePath_WhenSettingsNull_ReturnsEmptyString()
         {
             // Arrange
@@ -151,6 +206,28 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.SC
 
             // Assert
             result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetSystemTypePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedSystemType = "SC";
+            var settings = new SubscriberSettings
+            {
+                SC = new SubcriberDatabase
+                {
+                    SystemType = expectedSystemType
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetSystemTypePath");
+
+            // Assert
+            result.Should().Be(expectedSystemType);
         }
 
         private SCSubscriberService CreateService()

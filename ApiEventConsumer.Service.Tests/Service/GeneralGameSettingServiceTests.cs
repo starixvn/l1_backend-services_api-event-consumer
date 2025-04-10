@@ -1,7 +1,6 @@
 ﻿using Moq;
 using FluentAssertions;
 using ApiEventConsumer.Service.Service;
-using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 

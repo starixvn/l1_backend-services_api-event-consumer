@@ -139,6 +139,97 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.VG
             result.Should().BeOfType<StreamConfig>();
         }
 
+        [Fact]
+        public void GetStreamNamePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedStreamName = "test.stream";
+            var settings = new SubscriberSettings
+            {
+                VG = new SubcriberDatabase
+                {
+                    StreamConfig = new StreamConfig
+                    {
+                        StreamName = expectedStreamName
+                    }
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetStreamNamePath");
+
+            // Assert
+            result.Should().Be(expectedStreamName);
+        }
+
+        [Fact]
+        public void GetStreamConfigPath_WhenSettingsExist_ReturnsCorrectConfig()
+        {
+            // Arrange
+            var expectedConfig = new StreamConfig
+            {
+                StreamName = "test.stream",
+                BetMessages = "test.bet",
+                Enable = true
+            };
+            var settings = new SubscriberSettings
+            {
+                VG = new SubcriberDatabase
+                {
+                    StreamConfig = expectedConfig
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<StreamConfig>(service, "GetStreamConfigPath");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.StreamName.Should().Be(expectedConfig.StreamName);
+            result.BetMessages.Should().Be(expectedConfig.BetMessages);
+            result.Enable.Should().Be(expectedConfig.Enable);
+        }
+
+        [Fact]
+        public void GetSystemTypePath_WhenSettingsNull_ReturnsEmptyString()
+        {
+            // Arrange
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(new SubscriberSettings());
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetSystemTypePath");
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetSystemTypePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedSystemType = "VG";
+            var settings = new SubscriberSettings
+            {
+                VG = new SubcriberDatabase
+                {
+                    SystemType = expectedSystemType
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetSystemTypePath");
+
+            // Assert
+            result.Should().Be(expectedSystemType);
+        }
+
         private VGSubcriberService CreateService()
         {
             return new VGSubcriberService(

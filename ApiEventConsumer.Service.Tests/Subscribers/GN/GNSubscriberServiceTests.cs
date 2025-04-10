@@ -96,7 +96,9 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.GN
                 {
                     StreamConfig = new StreamConfig
                     {
-                        BetMessages = expectedMessage
+                        BetMessages = expectedMessage,
+                        StreamName = string.Empty,
+                        SettledMessages = string.Empty
                     }
                 }
             };
@@ -140,6 +142,61 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.GN
         }
 
         [Fact]
+        public void GetStreamNamePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedStreamName = "test.stream";
+            var settings = new SubscriberSettings
+            {
+                GN = new SubcriberDatabase
+                {
+                    StreamConfig = new StreamConfig
+                    {
+                        StreamName = expectedStreamName
+                    }
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetStreamNamePath");
+
+            // Assert
+            result.Should().Be(expectedStreamName);
+        }
+
+        [Fact]
+        public void GetStreamConfigPath_WhenSettingsExist_ReturnsCorrectConfig()
+        {
+            // Arrange
+            var expectedConfig = new StreamConfig
+            {
+                StreamName = "test.stream",
+                BetMessages = "test.bet",
+                Enable = true
+            };
+            var settings = new SubscriberSettings
+            {
+                GN = new SubcriberDatabase
+                {
+                    StreamConfig = expectedConfig
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<StreamConfig>(service, "GetStreamConfigPath");
+
+            // Assert
+            result.Should().NotBeNull();
+            result.StreamName.Should().Be(expectedConfig.StreamName);
+            result.BetMessages.Should().Be(expectedConfig.BetMessages);
+            result.Enable.Should().Be(expectedConfig.Enable);
+        }
+
+        [Fact]
         public void GetSystemTypePath_WhenSettingsNull_ReturnsEmptyString()
         {
             // Arrange
@@ -151,6 +208,28 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.GN
 
             // Assert
             result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetSystemTypePath_WhenSettingsExist_ReturnsCorrectValue()
+        {
+            // Arrange
+            var expectedSystemType = "GN";
+            var settings = new SubscriberSettings
+            {
+                GN = new SubcriberDatabase
+                {
+                    SystemType = expectedSystemType
+                }
+            };
+            _mockAppSettings.Setup(x => x.SubcriberSettings).Returns(settings);
+            var service = CreateService();
+
+            // Act
+            var result = GetProtectedValue<string>(service, "GetSystemTypePath");
+
+            // Assert
+            result.Should().Be(expectedSystemType);
         }
 
         private GNSubscriberService CreateService()
