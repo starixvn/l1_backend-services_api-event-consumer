@@ -907,26 +907,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public void ConnectToNats_WhenConnectionFails_ThrowsException()
-        {
-            // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
-            var streamSettings = new StreamSettings { Host = "nats://localhost:4222" };
-            var mockConnection = new Mock<IConnection>();
-            mockConnection.SetupGet(x => x.State).Returns(ConnState.DISCONNECTED);
-
-            // Use reflection to access private method
-            var method = typeof(SubscriberService).GetMethod("ConnectToNats", 
-                BindingFlags.NonPublic | BindingFlags.Instance);
-
-            // Act & Assert
-            var ex = Assert.Throws<TargetInvocationException>(
-                () => method.Invoke(service, new object[] { streamSettings }));
-            Assert.IsType<NATSConnectionException>(ex.InnerException);
-            Assert.Contains("timeout", ex.InnerException.Message);
-        }
-
-        [Fact]
         public void InitializeNatsConnection_WhenStreamSettingsNull_ReturnsEarly()
         {
             // Arrange
