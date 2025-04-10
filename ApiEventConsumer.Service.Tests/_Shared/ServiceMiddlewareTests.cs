@@ -2,6 +2,7 @@
 using ApiEventConsumer._Shared.Middlewares;
 using ApiEventConsumer.Subscribers;
 using Microsoft.Extensions.DependencyInjection;
+using MongoDB.Driver.Core.Configuration;
 
 namespace ApiEventConsumer.Service.Tests._Shared
 {
@@ -82,11 +83,30 @@ namespace ApiEventConsumer.Service.Tests._Shared
             // Arrange
             var appSettings = new AppSettings
             {
+                Port = 1,
+                DatabaseSettings = new DatabaseSettings {
+                    ConnectionString = string.Empty,
+                    DatabaseName = string.Empty,
+                    Collection = string.Empty
+                },
                 ChatBotApiSettings = new ChatBotApiSettings
                 {
+                    Token = string.Empty,
                     Url = "http://test.com",
                     Proxy = "http://proxy.com",
-                    TimeoutInSeconds = 30
+                    TimeoutInSeconds = 30,
+                    HighStakeAmount = 30,
+                    ConversationIds = new ConversationIds
+                    {
+                        HighStake = string.Empty,
+                        Promotion = string.Empty,
+                        PromotionTournament = string.Empty
+                    }
+                },
+                StreamSettings = new StreamSettings
+                {
+                    Host = "localhost",
+                    Enable = true
                 }
             };
 

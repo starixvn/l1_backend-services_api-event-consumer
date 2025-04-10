@@ -20,7 +20,6 @@
     {
         public string? StreamName { get; set; }
         public string? BetMessages { get; set; }
-        public string? SettledMessages { get; set; }
         public bool? Enable { get; set; }
 
     }

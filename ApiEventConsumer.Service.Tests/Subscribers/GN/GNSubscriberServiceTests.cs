@@ -97,8 +97,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.GN
                     StreamConfig = new StreamConfig
                     {
                         BetMessages = expectedMessage,
-                        StreamName = string.Empty,
-                        SettledMessages = string.Empty
+                        StreamName = string.Empty
                     }
                 }
             };
