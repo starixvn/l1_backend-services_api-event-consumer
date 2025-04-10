@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace ApiEventConsumer.Database.Entities
 {
     [BsonCollection("users")]
-    public class AccountEntity : MiniGameBaseEntity
+    public class AccountEntity : Document
     {
         [BsonElement("local")]
         public LocalAccount? Local { get; set; }

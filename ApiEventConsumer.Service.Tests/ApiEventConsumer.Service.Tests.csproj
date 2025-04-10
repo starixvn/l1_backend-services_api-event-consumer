@@ -25,8 +25,4 @@
     <ProjectReference Include="..\ApiEventConsumer.Service\ApiEventConsumer.Service.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Subscribers\" />
-  </ItemGroup>
-
 </Project>

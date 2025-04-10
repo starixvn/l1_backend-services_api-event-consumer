@@ -38,12 +38,10 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly Mock<IGeneralGameSettingService> _mockGeneralGameSettingService;
         private readonly Mock<IChatBotApi> _mockChatBotApi;
         private readonly Mock<StreamConfig> _mockStreamConfig;
-        private readonly Mock<IConnectionFactory> _mockConnectionFactory;
 
         private readonly SubscriberService.ConfigurationDependencies _configDependencies;
         private readonly SubscriberService.RepositoryDependencies _repoDependencies;
         private readonly SubscriberService.ServiceDependencies _serviceDependencies;
-        private const int CacheExpireInMinutes = 60 * 24;
 
         public SubscriberServiceTests()
         {
@@ -61,7 +59,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             _mockGeneralGameSettingService = new Mock<IGeneralGameSettingService>();
             _mockChatBotApi = new Mock<IChatBotApi>();
             _mockStreamConfig = new Mock<StreamConfig>();
-            _mockConnectionFactory = new Mock<IConnectionFactory>();
 
             // Setup dependencies
             _configDependencies = new SubscriberService.ConfigurationDependencies(
@@ -227,7 +224,12 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         {
             // Arrange
             var bet = new BetCreated { Amount = 100 };
-            var exchangeRate = new ExchangeRateEntity { Code = null };
+            var exchangeRate = new ExchangeRateEntity { 
+                Code = null,
+                Time = DateTime.UtcNow,
+                ExDate = DateTime.UtcNow,
+                Source = string.Empty
+            };
             
             _mockCache.Setup(x => x.GetCache<ExchangeRateEntity>(CachedKeys.ExchangeRate.ToString()))
                     .Returns(exchangeRate);
@@ -463,7 +465,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 PlayerId = "123",
                 BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
                 Ip = "127.0.0.1",
-                RecheckInTime = DateTime.UtcNow
+                RecheckInTime = DateTime.UtcNow,
+                ParnerId = "123"
             };
 
             _mockUserSessionRepo

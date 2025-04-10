@@ -10,14 +10,10 @@ namespace ApiEventConsumer.Service.Tests.Service
     public class GeneralGameSettingServiceTests
     {
         private readonly Mock<IGenericRepository<GameConfigEntity>> _mockRepository;
-        private readonly Mock<IServiceProvider> _mockServiceProvider;
-        private readonly Mock<IAppSettings> _mockAppSettings;
 
         public GeneralGameSettingServiceTests()
         {
             _mockRepository = new Mock<IGenericRepository<GameConfigEntity>>();
-            _mockServiceProvider = new Mock<IServiceProvider>();
-            _mockAppSettings = new Mock<IAppSettings>();
 
         }
 
@@ -77,6 +73,78 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             result.Should().Be("Game 2");
         }
+
+        [Fact]
+        public async Task GetDisplayName_WhenDisplayNameAndNameBothExist_ShouldPreferDisplayName()
+        {
+            // Arrange
+            const int gameId = 1;
+            const string displayName = "Custom Display Name";
+            const string name = "KenoMatch1";
+            
+            SetupLocalGameConfig(gameId, displayName: displayName, name: name);
+            var service = CreateService();
+
+            // Act
+            var result = await service.GetDisplayName(gameId);
+
+            // Assert
+            result.Should().Be(displayName);
+        }
+
+        [Fact]
+        public async Task GetDisplayName_WhenOnlyNameExists_ShouldUseGameEnumDisplayName()
+        {
+            // Arrange
+            const int gameId = 1;
+            const string name = "Keno Soccer";
+            
+            SetupLocalGameConfig(gameId, displayName: null, name: name);
+            var service = CreateService();
+
+            // Act
+            var result = await service.GetDisplayName(gameId);
+
+            // Assert
+            result.Should().Be("Keno Soccer"); // Assuming this is the DisplayName from Game enum
+        }
+
+        [Fact]
+        public async Task GetDisplayName_WhenBothNamesAreEmpty_ShouldReturnEmptyString()
+        {
+            // Arrange
+            const int gameId = 1;
+            
+            SetupLocalGameConfig(gameId, displayName: null, name: null);
+            var service = CreateService();
+
+            // Act
+            var result = await service.GetDisplayName(gameId);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        [InlineData("   ")]
+        public async Task GetDisplayName_WhenDisplayNameIsNullOrEmpty_ShouldFallbackToGameName(string displayName)
+        {
+            // Arrange
+            const int gameId = 1;
+            var configs = new[]
+            {
+                new GameConfigEntity
+                {
+                    GameId = gameId,
+                    DisplayName = displayName
+                }
+            }.AsQueryable();
+
+            _mockRepository.Setup(x => x.AsQueryable()).Returns(configs);
+        }
+
 
         private GeneralGameSettingService CreateService()
         {

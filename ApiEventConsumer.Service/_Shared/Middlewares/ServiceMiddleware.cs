@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Subscribers;
-using Coravel;
 using Refit;
 
 namespace ApiEventConsumer._Shared.Middlewares

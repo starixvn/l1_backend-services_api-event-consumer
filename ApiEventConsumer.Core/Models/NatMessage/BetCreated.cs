@@ -1,6 +1,4 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
-
-namespace ApiEventConsumer.Core.Models.NatMessage
+﻿namespace ApiEventConsumer.Core.Models.NatMessage
 {
     public class BetCreated
     {

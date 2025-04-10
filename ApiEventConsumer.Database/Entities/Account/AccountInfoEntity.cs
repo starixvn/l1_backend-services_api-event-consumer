@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace ApiEventConsumer.Database.Entities
 {
     [BsonCollection("userinfos")]
-    public class AccountInfoEntity : MiniGameBaseEntity
+    public class AccountInfoEntity : Document
     {
         [BsonElement("id")]
         public string? UserId { get; set; }

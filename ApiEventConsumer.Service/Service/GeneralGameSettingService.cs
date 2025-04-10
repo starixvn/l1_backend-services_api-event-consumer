@@ -1,6 +1,4 @@
-﻿using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Core.Enumeration;
-using ApiEventConsumer.Database;
+﻿using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 
 namespace ApiEventConsumer.Service.Service
@@ -30,7 +28,7 @@ namespace ApiEventConsumer.Service.Service
             }
             else if (!string.IsNullOrEmpty(gameInfo.Name))
             {
-                displayName = Game.FromGameName(gameInfo.Name).DisplayName;
+                displayName = gameInfo.Name;
             }
             else
             {
