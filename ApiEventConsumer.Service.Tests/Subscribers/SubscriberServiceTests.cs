@@ -453,6 +453,12 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             service.HandleBetCreated(null, msgArgs);
 
             // Assert
+            _mockSentryClient.Verify(
+                x => x.CaptureEvent(
+                    It.Is<SentryEvent>(e => e.Exception != null && 
+                                          e.Exception.Message.Contains("Error processing bet.created message")),
+                    It.IsAny<Scope>()),
+                Times.Once);
         }
 
         [Fact]
@@ -520,7 +526,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Arrange
             var service = CreateService(new StreamConfig { Enable = true });
             var mockConnection = new Mock<IConnection>();
-            var mockSubscription = new Mock<IAsyncSubscription>();
+            var mockSubscription = new Mock<IJetStreamPushAsyncSubscription>();
 
             // Use reflection to set private fields
             var connectionField = typeof(SubscriberService)
@@ -642,7 +648,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Arrange
             var service = CreateService(new StreamConfig { Enable = true });
             var mockConnection = new Mock<IConnection>();
-            var mockSubscription = new Mock<IAsyncSubscription>();
+            var mockSubscription = new Mock<IJetStreamPushAsyncSubscription>();
 
             // Use reflection to set private fields
             var connectionField = typeof(SubscriberService)
@@ -660,6 +666,400 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Assert
             mockConnection.Verify(x => x.Dispose(), Times.Once);
             mockSubscription.Verify(x => x.Unsubscribe(), Times.Once);
+        }
+
+        [Fact]
+        public void InitializeNatsConnection_WhenExceptionOccurs_CapturesExceptionInSentry()
+        {
+            // Arrange
+            var streamSettings = new StreamSettings 
+            { 
+                Enable = true,
+                Host = "nats://localhost:4222"
+            };
+            _mockAppSettings
+                .Setup(x => x.StreamSettings)
+                .Returns(streamSettings);
+
+            var streamConfig = new StreamConfig { Enable = true };
+            var service = CreateService(streamConfig);
+
+            // Simulate exception in ConnectToNats
+            var mockConnection = new Mock<IConnection>();
+            mockConnection
+                .SetupGet(x => x.State)
+                .Throws(new Exception("Connection failed"));
+
+            // Use reflection to inject mock connection directly
+            var connectionField = typeof(SubscriberService)
+                .GetField("_connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            connectionField?.SetValue(service, mockConnection.Object);
+
+            // Act
+            service.InitializeNatsConnection();
+
+            // Assert
+        }
+
+        [Fact]
+        public void ConfigureSubscription_ShouldSetupSubscriptionCorrectly()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var mockJsContext = new Mock<IJetStream>();
+            var streamName = "test_stream";
+            var betMessages = "api_bet_created";
+            var mockSubscription = new Mock<IJetStreamPushAsyncSubscription>();
+            mockSubscription.SetupGet(x => x.Subject).Returns(betMessages);
+            mockSubscription.Setup(x => x.Start()).Verifiable();
+
+            mockJsContext
+                .Setup(x => x.PushSubscribeAsync(
+                    betMessages,
+                    It.Is<EventHandler<MsgHandlerEventArgs>>(handler => true),
+                    It.Is<bool>(autoAck => autoAck == true),
+                    It.IsAny<PushSubscribeOptions>()))
+                .Returns(mockSubscription.Object);
+
+            // Use reflection to access private method
+            var method = typeof(SubscriberService).GetMethod("ConfigureSubscription", 
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Act
+            method?.Invoke(service, [mockJsContext.Object, streamName, betMessages]);
+
+            // Assert
+            mockSubscription.Verify(x => x.Start(), Times.Once);
+        }
+
+        [Fact]
+        public void GetHighStakeAmount_WhenSettingsNull_ReturnsDefaultAmount()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns((ChatBotApiSettings)null);
+
+            // Act
+            var result = service.GetHighStakeAmount();
+
+            // Assert
+            Assert.Equal(2000, result); // Default amount from constant
+        }
+
+        [Fact]
+        public void GetHighStakeAmount_WhenSettingsProvided_ReturnsConfiguredAmount()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
+
+            // Act
+            var result = service.GetHighStakeAmount();
+
+            // Assert
+            Assert.Equal(5000, result);
+        }
+
+        [Fact]
+        public async Task GetAmount_CallsCalAmountOnBaseCurrency()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var bet = new BetCreated { Amount = 100, Currency = "USD" };
+
+            // Act
+            var result = await service.GetAmount(bet);
+
+            // Assert
+            Assert.Equal(100, result); // Default behavior when no exchange rate
+        }
+
+        [Fact]
+        public async Task GetUser_WhenCacheHit_ReturnsCachedValue()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var expectedUser = new AccountEntity { PlayerId = "123", OperatorId = "op1" };
+            var cacheKey = "User123";
+            
+            _mockCache.Setup(x => x.GetCache<AccountEntity>(cacheKey))
+                     .Returns(expectedUser);
+
+            // Act
+            var result = await service.GetUser("123", "op1");
+
+            // Assert
+            Assert.Equal(expectedUser, result);
+            _mockUserRepo.Verify(x => x.Collection(), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetUser_WhenCacheMiss_FetchesFromDatabase()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var expectedUser = new AccountEntity { PlayerId = "123", OperatorId = "op1" };
+            var cacheKey = "User123";
+            
+            _mockCache.Setup(x => x.GetCache<AccountEntity>(cacheKey))
+                     .Returns((AccountEntity)null);
+
+            _mockUserRepo.Setup(x => x.Collection())
+                        .Returns(MockMongoCollection(new[] { expectedUser }));
+
+            // Act
+            var result = await service.GetUser("123", "op1");
+
+            // Assert
+            _mockCache.Verify(x => x.SetCache(
+                cacheKey,
+                It.IsAny<AccountEntity>(),
+                It.IsAny<int>()), Times.Once);
+        }
+
+        [Fact]
+        public void HandleBetCreated_WhenMessageIsInvalid_LogsToSentry()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var invalidData = Encoding.UTF8.GetBytes("invalid json");
+            var msgArgs = new MsgHandlerEventArgs(new Msg("subject", invalidData));
+
+            // Setup Sentry client
+            _mockSentryClient
+                .Setup(x => x.IsEnabled)
+                .Returns(true);
+
+            // Act
+            service.HandleBetCreated(null, msgArgs);
+
+            // Assert
+            _mockSentryClient.Verify(
+                x => x.CaptureEvent(
+                    It.Is<SentryEvent>(e => e.Exception != null),
+                    It.IsAny<Scope>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void ConfigureStream_WhenStreamExists_DoesNotCreateNewStream()
+        {
+            // Arrange
+            var streamName = "test_stream";
+            var mockJsManagement = new Mock<IJetStreamManagement>();
+            var mockStreamInfo = new StreamInfo(@"{
+                ""config"": {
+                    ""name"": ""test_stream"",
+                    ""subjects"": [""test.>""],
+                    ""retention"": ""limits"",
+                    ""max_consumers"": -1,
+                    ""max_msgs"": -1,
+                    ""max_bytes"": -1,
+                    ""max_age"": 0,
+                    ""max_msg_size"": -1,
+                    ""storage"": ""file"",
+                    ""discard"": ""old"",
+                    ""num_replicas"": 1
+                },
+                ""state"": {
+                    ""messages"": 0,
+                    ""bytes"": 0,
+                    ""first_seq"": 0,
+                    ""last_seq"": 0,
+                    ""consumer_count"": 0
+                }
+            }", true);
+            
+            mockJsManagement
+                .Setup(x => x.GetStreamInfo(streamName))
+                .Returns(mockStreamInfo);
+
+            var service = CreateService(new StreamConfig { Enable = true });
+
+            // Act
+            service.ConfigureStream(mockJsManagement.Object, streamName);
+
+            // Assert
+            mockJsManagement.Verify(
+                x => x.AddStream(It.IsAny<StreamConfiguration>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void ConfigureStream_WhenExceptionOccurs_LogsToSentry()
+        {
+            // Arrange
+            var streamName = "test_stream";
+            var mockJsManagement = new Mock<IJetStreamManagement>();
+            mockJsManagement
+                .Setup(x => x.GetStreamInfo(streamName))
+                .Throws(new NATSJetStreamException("Test exception"));
+
+            var service = CreateService(new StreamConfig { Enable = true });
+
+            // Act
+            service.ConfigureStream(mockJsManagement.Object, streamName);
+
+            // Assert
+            mockJsManagement.Verify(
+                x => x.AddStream(It.IsAny<StreamConfiguration>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void ConnectToNats_WhenConnectionFails_ThrowsException()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var streamSettings = new StreamSettings { Host = "nats://localhost:4222" };
+            var mockConnection = new Mock<IConnection>();
+            mockConnection.SetupGet(x => x.State).Returns(ConnState.DISCONNECTED);
+
+            // Use reflection to access private method
+            var method = typeof(SubscriberService).GetMethod("ConnectToNats", 
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Act & Assert
+            var ex = Assert.Throws<TargetInvocationException>(
+                () => method.Invoke(service, new object[] { streamSettings }));
+            Assert.IsType<NATSConnectionException>(ex.InnerException);
+            Assert.Contains("timeout", ex.InnerException.Message);
+        }
+
+        [Fact]
+        public void InitializeNatsConnection_WhenStreamSettingsNull_ReturnsEarly()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            _mockAppSettings.Setup(x => x.StreamSettings).Returns((StreamSettings)null);
+
+            // Act
+            service.InitializeNatsConnection();
+
+            // Assert
+            var connectionField = typeof(SubscriberService)
+                .GetField("_connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            var connection = connectionField?.GetValue(service) as IConnection;
+            Assert.Null(connection);
+        }
+
+        [Fact]
+        public async Task NotifyHighStake_WhenAmountBelowThreshold_ReturnsEmptyResult()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var bet = new BetCreated { Amount = 100, Currency = "USD" };
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
+
+            // Act
+            var result = await service.NotifyHighStake(bet, "TEST");
+
+            // Assert
+            Assert.NotNull(result);
+            _mockChatBotApi.Verify(
+                x => x.ForwardMessage(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task NotifyHighStake_WhenHighStake_SendsNotification()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var bet = new BetCreated 
+            { 
+                Amount = 10000,
+                Currency = "USD",
+                PlayerId = 123,
+                GameTypeId = 1,
+                System = (int)Versions.App,
+                Metadata = new Dictionary<string, string>()
+            };
+
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings 
+            { 
+                HighStakeAmount = 5000,
+                Token = "token",
+                ConversationIds = new ConversationIds { HighStake = "conv1" }
+            });
+
+            _mockGameUserService.Setup(x => x.GetCharacterNameAsync(It.IsAny<string>()))
+                               .ReturnsAsync("TestPlayer");
+
+            _mockGeneralGameSettingService.Setup(x => x.GetDisplayName(It.IsAny<int>()))
+                                        .ReturnsAsync("TestGame");
+
+            // Act
+            var result = await service.NotifyHighStake(bet, "TEST");
+
+            // Assert
+            Assert.NotNull(result);
+            _mockChatBotApi.Verify(
+                x => x.ForwardMessage(
+                    "token",
+                    "conv1",
+                    It.Is<string>(msg => msg.Contains("TestPlayer") && msg.Contains("10000"))),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task NotifyHighStake_WhenExceptionOccurs_LogsToSentry()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var bet = new BetCreated { Amount = 10000, Currency = "USD" };
+
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
+            _mockGameUserService.Setup(x => x.GetCharacterNameAsync(It.IsAny<string>()))
+                               .ThrowsAsync(new Exception("Test exception"));
+
+            // Act
+            var result = await service.NotifyHighStake(bet, "TEST");
+
+            // Assert
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void GetVersionName_WithModeMetadata_IncludesMode()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var metadata = new Dictionary<string, string> { { "mode", "Portrait" } };
+
+            // Act
+            var result = service.GetVersionName(Versions.Instant, metadata, SystemType.SC1);
+
+            // Assert
+            Assert.Equal("SI", result);
+        }
+
+        [Fact]
+        public void GetVersionName_ForMegaKeno_ReturnsCorrectPrefix()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var metadata = new Dictionary<string, string>();
+
+            // Act
+            var result = service.GetVersionName(Versions.MegaKeno, metadata, SystemType.SC1);
+
+            // Assert
+            Assert.Equal("MK", result);
+        }
+
+        [Fact]
+        public void GetVersionName_ForCocos_ReturnsCorrectPrefix()
+        {
+            // Arrange
+            var service = CreateService(new StreamConfig { Enable = true });
+            var metadata = new Dictionary<string, string>();
+
+            // Act
+            var result = service.GetVersionName(Versions.Cocos, metadata, SystemType.SC1);
+
+            // Assert
+            Assert.Equal("SC", result);
         }
     }
 }

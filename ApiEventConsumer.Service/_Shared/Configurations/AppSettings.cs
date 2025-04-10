@@ -1,5 +1,4 @@
 ﻿using ApiEventConsumer.Subscribers;
-using NATS.Client.JetStream;
 
 namespace ApiEventConsumer._Shared.Configurations
 {
