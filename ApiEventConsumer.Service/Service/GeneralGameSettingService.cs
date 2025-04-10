@@ -13,19 +13,15 @@ namespace ApiEventConsumer.Service.Service
     public class GeneralGameSettingService : IGeneralGameSettingService
     {
         private readonly IGenericRepository<GameConfigEntity> repository;
-        private readonly IServiceProvider serviceProvider;
-        private readonly IAppSettings appSettings;
 
-        public GeneralGameSettingService(IGenericRepository<GameConfigEntity> repository, IServiceProvider serviceProvider, IAppSettings appSettings)
+        public GeneralGameSettingService(IGenericRepository<GameConfigEntity> repository)
         {
             this.repository = repository;
-            this.serviceProvider = serviceProvider;
-            this.appSettings = appSettings;
         }
 
         public async Task<string> GetDisplayName(int gameId)
         {
-            var gameInfo = await GetGameConfig(gameId);
+            var gameInfo = await GetGameConfigDirectOnKbtDatabase(gameId);
 
             string displayName;
             if (!string.IsNullOrEmpty(gameInfo.DisplayName))
@@ -41,11 +37,6 @@ namespace ApiEventConsumer.Service.Service
                 displayName = string.Empty;
             }
             return displayName;
-        }
-
-        public async Task<GameConfigEntity> GetGameConfig(int gameId)
-        {
-            return await GetGameConfigDirectOnKbtDatabase(gameId);
         }
 
         private async Task<GameConfigEntity> GetGameConfigDirectOnKbtDatabase(int gameId)

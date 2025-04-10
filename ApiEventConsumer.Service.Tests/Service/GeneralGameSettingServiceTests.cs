@@ -81,9 +81,7 @@ namespace ApiEventConsumer.Service.Tests.Service
         private GeneralGameSettingService CreateService()
         {
             return new GeneralGameSettingService(
-                _mockRepository.Object,
-                _mockServiceProvider.Object,
-                _mockAppSettings.Object
+                _mockRepository.Object
             );
         }
 

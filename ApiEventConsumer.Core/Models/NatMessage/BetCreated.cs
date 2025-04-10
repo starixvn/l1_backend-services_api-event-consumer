@@ -25,33 +25,4 @@ namespace ApiEventConsumer.Core.Models.NatMessage
         public int System { get; set; }
         public Dictionary<string, string>? Metadata { get; set; }
     }
-
-    public class ExchangeRate
-    {
-        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime Time { get; set; }
-
-        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime ExDate { get; set; }
-
-        public int ExId { get; set; }
-
-        public string? Source { get; set; }
-
-        public Dictionary<string, decimal>? Code { get; set; }
-    }
-
-    public class Currency
-    {
-        public bool Enabled { get; set; }
-        public string? Name { get; set; }
-        public string? Code { get; set; }
-        public decimal Multiplier { get; set; }
-        public string? PartnerId { get; set; }
-    }
-
-    public class User
-    {
-        public string? OperatorId { get; set; }
-    }
 }

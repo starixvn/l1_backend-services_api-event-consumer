@@ -31,8 +31,6 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    services.AddSchedulers();
-                    services.AddEventListeners();
                     services.AddChatBotServices(appSettings);
 
                     if (appSettings.SubcriberSettings != null)
