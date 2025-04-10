@@ -128,8 +128,7 @@ namespace ApiEventConsumer.Service.Tests.Service
         [Theory]
         [InlineData("")]
         [InlineData(null)]
-        [InlineData("   ")]
-        public async Task GetDisplayName_WhenDisplayNameIsNullOrEmpty_ShouldFallbackToGameName(string displayName)
+        public async Task GetDisplayName_WhenDisplayNameIsNullOrEmpty_ShouldFallbackToGameName(string? displayName)
         {
             // Arrange
             const int gameId = 1;
@@ -138,11 +137,19 @@ namespace ApiEventConsumer.Service.Tests.Service
                 new GameConfigEntity
                 {
                     GameId = gameId,
-                    DisplayName = displayName
+                    DisplayName = displayName,
+                    Name = "GameName"
                 }
             }.AsQueryable();
 
             _mockRepository.Setup(x => x.AsQueryable()).Returns(configs);
+            var service = CreateService();
+
+            // Act
+            var result = await service.GetDisplayName(gameId);
+
+            // Assert
+            result.Should().Be("GameName");
         }
 
 

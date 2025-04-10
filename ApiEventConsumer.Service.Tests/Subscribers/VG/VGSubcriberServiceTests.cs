@@ -150,7 +150,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.VG
             );
         }
 
-        private T GetProtectedValue<T>(VGSubcriberService service, string methodName)
+        private static T GetProtectedValue<T>(VGSubcriberService service, string methodName)
         {
             var method = typeof(VGSubcriberService).GetMethod(methodName, 
                 System.Reflection.BindingFlags.NonPublic | 

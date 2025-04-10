@@ -57,12 +57,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             AssertServiceLifetime<IGenericRepository<AccountEntity>>(ServiceLifetime.Singleton);
         }
 
-        private void AssertServiceRegistered<T>(IServiceProvider serviceProvider)
-        {
-            var service = serviceProvider.GetService<T>();
-            Assert.NotNull(service);
-        }
-
         private void AssertServiceLifetime<T>(ServiceLifetime expectedLifetime)
         {
             var serviceDescriptor = _services.FirstOrDefault(d => d.ServiceType == typeof(T));

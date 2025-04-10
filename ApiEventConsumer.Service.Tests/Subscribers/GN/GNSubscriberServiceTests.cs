@@ -164,7 +164,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.GN
             );
         }
 
-        private T GetProtectedValue<T>(GNSubscriberService service, string methodName)
+        private static T GetProtectedValue<T>(GNSubscriberService service, string methodName)
         {
             var method = typeof(GNSubscriberService).GetMethod(methodName, 
                 System.Reflection.BindingFlags.NonPublic | 

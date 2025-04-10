@@ -164,7 +164,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers.SC
             );
         }
 
-        private T GetProtectedValue<T>(SCSubscriberService service, string methodName)
+        private static T GetProtectedValue<T>(SCSubscriberService service, string methodName)
         {
             var method = typeof(SCSubscriberService).GetMethod(methodName, 
                 System.Reflection.BindingFlags.NonPublic | 
