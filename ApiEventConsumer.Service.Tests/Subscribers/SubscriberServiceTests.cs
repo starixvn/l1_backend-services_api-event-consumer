@@ -651,7 +651,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             };
             _mockAppSettings
                 .Setup(x => x.StreamSettings)
-                .Returns(streamSettings);
+                .Returns(() => (StreamSettings?)null);
 
             var service = CreateService();
 
@@ -884,7 +884,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Arrange
             var service = CreateService();
             _mockAppSettings.Setup(x => x.StreamSettings)
-                .Returns(default(StreamSettings));
+                .Returns(() => (StreamSettings?)null);
 
             // Act
             service.InitializeNatsConnection();
@@ -972,6 +972,61 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             // Assert
             Assert.Equal("SC", result);
+        }
+
+        [Fact]
+        public void ConfigureJetStream_WhenStreamSettingsNull_ReturnsEarly()
+        {
+            // Arrange
+            var service = CreateService();
+            _mockAppSettings.Setup(x => x.StreamSettings).Returns(() => (StreamSettings?)null);
+
+            // Act
+            var method = typeof(SubscriberService).GetMethod("ConfigureJetStream", 
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            method?.Invoke(service, Array.Empty<object>());
+
+            // Assert
+            var connectionField = typeof(SubscriberService)
+                .GetField("_connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.Null(connectionField?.GetValue(service));
+        }
+
+        [Fact]
+        public async Task GetDeviceInformation_WhenUserAgentNull_HandlesGracefully()
+        {
+            // Arrange
+            var service = CreateService();
+            var userSession = new UserSessionEntity
+            {
+                PlayerId = "123",
+                BrowserUserAgent = null,
+                Ip = "127.0.0.1"
+            };
+
+            _mockUserSessionRepo
+                .Setup(x => x.Collection())
+                .Returns(MockMongoCollection(new[] { userSession }));
+
+            // Act
+            var result = await service.GetDeviceInformation("123");
+
+            // Assert
+            Assert.Contains("Unknown", result);
+        }
+
+        [Fact]
+        public void GetExchangeRate_WhenRepositoryEmpty_ThrowsException()
+        {
+            // Arrange
+            var service = CreateService();
+            _mockCache.Setup(x => x.GetCache<ExchangeRateEntity>(It.IsAny<string>()))
+                .Returns(default(ExchangeRateEntity));
+            _mockExchangeRateRepo.Setup(x => x.AsQueryable())
+                .Returns(new List<ExchangeRateEntity>().AsQueryable());
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => service.GetExchangeRate());
         }
     }
 }
