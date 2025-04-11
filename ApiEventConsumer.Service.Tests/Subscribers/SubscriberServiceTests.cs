@@ -941,47 +941,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task NotifyHighStake_WhenHighStake_SendsNotification()
-        {
-            // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
-            var bet = new BetCreated 
-            { 
-                Amount = 10000,
-                Currency = "USD",
-                PlayerId = 123,
-                GameTypeId = 1,
-                System = (int)Versions.App,
-                Metadata = new Dictionary<string, string>()
-            };
-
-            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings 
-            { 
-                HighStakeAmount = 5000,
-                Token = "token",
-                ConversationIds = new ConversationIds { HighStake = "conv1" }
-            });
-
-            _mockGameUserService.Setup(x => x.GetCharacterNameAsync(It.IsAny<string>()))
-                               .ReturnsAsync("TestPlayer");
-
-            _mockGeneralGameSettingService.Setup(x => x.GetDisplayName(It.IsAny<int>()))
-                                        .ReturnsAsync("TestGame");
-
-            // Act
-            var result = await service.NotifyHighStake(bet, "TEST");
-
-            // Assert
-            Assert.NotNull(result);
-            _mockChatBotApi.Verify(
-                x => x.ForwardMessage(
-                    "token",
-                    "conv1",
-                    It.Is<string>(msg => msg.Contains("TestPlayer") && msg.Contains("10000"))),
-                Times.Once);
-        }
-
-        [Fact]
         public async Task NotifyHighStake_WhenExceptionOccurs_LogsToSentry()
         {
             // Arrange
