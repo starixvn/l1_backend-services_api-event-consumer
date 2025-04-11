@@ -26,7 +26,7 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Null(betCreated.OperatorId);
             Assert.Null(betCreated.UserId);
             Assert.Null(betCreated.Seq);
-            Assert.Equal(0, betCreated.PlayerId);
+            Assert.Null(betCreated.PlayerId);
             Assert.Null(betCreated.SiteId);
             Assert.Equal(default, betCreated.TimeStamp);
             Assert.Equal(0, betCreated.System);

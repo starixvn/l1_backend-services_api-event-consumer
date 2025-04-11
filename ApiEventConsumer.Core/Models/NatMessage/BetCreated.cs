@@ -17,7 +17,7 @@
         public string? OperatorId { get; set; }
         public string? UserId { get; set; }
         public string? Seq { get; set; }
-        public int PlayerId { get; set; }
+        public object? PlayerId { get; set; }
         public string? SiteId { get; set; }
         public DateTime TimeStamp { get; set; }
         public int System { get; set; }

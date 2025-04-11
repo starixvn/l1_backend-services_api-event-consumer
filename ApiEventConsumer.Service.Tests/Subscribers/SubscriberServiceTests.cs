@@ -37,7 +37,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly Mock<IGameUserService> _mockGameUserService;
         private readonly Mock<IGeneralGameSettingService> _mockGeneralGameSettingService;
         private readonly Mock<IChatBotApi> _mockChatBotApi;
-        private readonly Mock<StreamConfig> _mockStreamConfig;
 
         private readonly SubscriberService.ConfigurationDependencies _configDependencies;
         private readonly SubscriberService.RepositoryDependencies _repoDependencies;
@@ -58,7 +57,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             _mockGameUserService = new Mock<IGameUserService>();
             _mockGeneralGameSettingService = new Mock<IGeneralGameSettingService>();
             _mockChatBotApi = new Mock<IChatBotApi>();
-            _mockStreamConfig = new Mock<StreamConfig>();
 
             // Setup dependencies
             _configDependencies = new SubscriberService.ConfigurationDependencies(
@@ -83,31 +81,15 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
         private class TestSubscriberService : SubscriberService
         {
-            private readonly StreamConfig _streamSettings;
 
             public TestSubscriberService(
                 ISentryClient sentryClient,
                 ILogger<SubscriberService> logger,
                 ConfigurationDependencies configurations,
                 RepositoryDependencies repositories,
-                ServiceDependencies services,
-                StreamConfig streamSettings)
+                ServiceDependencies services)
                 : base("TEST", sentryClient, logger, configurations, repositories, services)
             {
-                _streamSettings = streamSettings;
-            }
-
-            protected override StreamConfig GetStreamConfigPath()
-            {
-                return _streamSettings;
-            }
-
-            protected override string GetSystemTypePath() => "TEST";
-            protected override string GetStreamNamePath() => "test.stream";
-
-            protected override string GetBetMessages()
-            {
-                return "api.bet.created";
             }
         }
 
@@ -347,8 +329,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 _mockLogger.Object,
                 _configDependencies,
                 _repoDependencies,
-                _serviceDependencies,
-                _mockStreamConfig.Object
+                _serviceDependencies
             );
         }
 
@@ -356,8 +337,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void InitializeNatsConnection_WhenStreamSettingsDisabled_DoesNotConnect()
         {
             // Arrange
-            var streamSettings = new StreamConfig { Enable = false };
-            var service = CreateService(streamSettings);
+            var service = CreateService();
 
             // Act
             service.InitializeNatsConnection();
@@ -370,7 +350,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             Assert.Null(connection);
         }
 
-        private TestSubscriberService CreateService(StreamConfig streamSettings)
+        private TestSubscriberService CreateService()
         {
             var configDeps = new SubscriberService.ConfigurationDependencies(
                 _mockConfiguration.Object,
@@ -396,8 +376,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 _mockLogger.Object,
                 configDeps,
                 repoDeps,
-                serviceDeps,
-                streamSettings
+                serviceDeps
             );
         }
 
@@ -405,7 +384,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void HandleBetCreated_ValidMessage_ProcessesSuccessfully()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var betCreated = new BetCreated
             {
                 PlayerId = 123,
@@ -436,7 +415,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void HandleBetCreated_InvalidMessage_HandlesError()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var invalidMessage = "invalid json";
             var msgArgs = new MsgHandlerEventArgs(
                 new Msg("subject", Encoding.UTF8.GetBytes(invalidMessage)));
@@ -462,7 +441,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetDeviceInformation_ValidUser_ReturnsDeviceInfo()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var userSession = new UserSessionEntity
             {
                 PlayerId = "123",
@@ -486,11 +465,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task StartAsync_InitializesNatsConnection()
         {
             // Arrange
-            var streamConfig = new StreamConfig
-            { 
-                Enable = true
-            };
-            var service = CreateService(streamConfig);
+            var service = CreateService();
             
             var mockConnection = new Mock<IConnection>();
             mockConnection
@@ -521,7 +496,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task StopAsync_DisposesAllResources()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var mockConnection = new Mock<IConnection>();
             var mockSubscription = new Mock<IJetStreamPushAsyncSubscription>();
 
@@ -566,7 +541,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetDeviceInformation_NoSession_ReturnsUnknown()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             _mockUserSessionRepo
                 .Setup(x => x.Collection())
                 .Returns(MockMongoCollection<UserSessionEntity>(new List<UserSessionEntity>()));
@@ -581,7 +556,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         [Fact]
         public void ConfigureJetStream_WhenConnectionNull_ReturnsEarly()
         {
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
 
             var method = typeof(SubscriberService).GetMethod("ConfigureJetStream", 
                 BindingFlags.NonPublic | BindingFlags.Instance);
@@ -602,7 +577,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task CalAmountOnBaseCurrency_WhenExceptionOccurs_ReturnsBetAmount()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var bet = new BetCreated { Amount = 100, Currency = "USD" };
             _mockExchangeRateRepo
                 .Setup(x => x.AsQueryable())
@@ -623,7 +598,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetGameName_ForDifferentGames_ReturnsCorrectName(GameId gameId, string? expectedName)
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             if (expectedName == null)
             {
                 _mockGeneralGameSettingService
@@ -643,7 +618,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void Dispose_WhenCalledMultipleTimes_OnlyDisposesOnce()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var mockConnection = new Mock<IConnection>();
             var mockSubscription = new Mock<IJetStreamPushAsyncSubscription>();
 
@@ -678,8 +653,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 .Setup(x => x.StreamSettings)
                 .Returns(streamSettings);
 
-            var streamConfig = new StreamConfig { Enable = true };
-            var service = CreateService(streamConfig);
+            var service = CreateService();
 
             // Simulate exception in ConnectToNats
             var mockConnection = new Mock<IConnection>();
@@ -702,7 +676,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void ConfigureSubscription_ShouldSetupSubscriptionCorrectly()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var mockJsContext = new Mock<IJetStream>();
             var streamName = "test_stream";
             var betMessages = "api_bet_created";
@@ -733,7 +707,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void GetHighStakeAmount_WhenSettingsNull_ReturnsDefaultAmount()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             _mockAppSettings.Setup(x => x.ChatBotApiSettings)
                 .Returns(new ChatBotApiSettings { HighStakeAmount = 2000});
 
@@ -748,7 +722,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void GetHighStakeAmount_WhenSettingsProvided_ReturnsConfiguredAmount()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
 
             // Act
@@ -762,7 +736,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetAmount_CallsCalAmountOnBaseCurrency()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var bet = new BetCreated { Amount = 100, Currency = "USD" };
 
             // Act
@@ -776,7 +750,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetUser_WhenCacheHit_ReturnsCachedValue()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var expectedUser = new AccountEntity { PlayerId = "123", OperatorId = "op1" };
             var cacheKey = "User123";
             
@@ -795,7 +769,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task GetUser_WhenCacheMiss_FetchesFromDatabase()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var expectedUser = new AccountEntity { PlayerId = "123", OperatorId = "op1" };
             var cacheKey = "User123";
             
@@ -819,7 +793,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void HandleBetCreated_WhenMessageIsInvalid_LogsToSentry()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var invalidData = Encoding.UTF8.GetBytes("invalid json");
             var msgArgs = new MsgHandlerEventArgs(new Msg("subject", invalidData));
 
@@ -872,7 +846,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 .Setup(x => x.GetStreamInfo(streamName))
                 .Returns(mockStreamInfo);
 
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
 
             // Act
             service.ConfigureStream(mockJsManagement.Object, streamName);
@@ -893,7 +867,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 .Setup(x => x.GetStreamInfo(streamName))
                 .Throws(new NATSJetStreamException("Test exception"));
 
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
 
             // Act
             service.ConfigureStream(mockJsManagement.Object, streamName);
@@ -908,7 +882,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void InitializeNatsConnection_WhenStreamSettingsNull_ReturnsEarly()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             _mockAppSettings.Setup(x => x.StreamSettings)
                 .Returns(default(StreamSettings));
 
@@ -926,7 +900,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task NotifyHighStake_WhenAmountBelowThreshold_ReturnsEmptyResult()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var bet = new BetCreated { Amount = 100, Currency = "USD" };
             _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
 
@@ -944,7 +918,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public async Task NotifyHighStake_WhenExceptionOccurs_LogsToSentry()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var bet = new BetCreated { Amount = 10000, Currency = "USD" };
 
             _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns(new ChatBotApiSettings { HighStakeAmount = 5000 });
@@ -962,7 +936,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void GetVersionName_WithModeMetadata_IncludesMode()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var metadata = new Dictionary<string, string> { { "mode", "Portrait" } };
 
             // Act
@@ -976,7 +950,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void GetVersionName_ForMegaKeno_ReturnsCorrectPrefix()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var metadata = new Dictionary<string, string>();
 
             // Act
@@ -990,7 +964,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void GetVersionName_ForCocos_ReturnsCorrectPrefix()
         {
             // Arrange
-            var service = CreateService(new StreamConfig { Enable = true });
+            var service = CreateService();
             var metadata = new Dictionary<string, string>();
 
             // Act
