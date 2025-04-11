@@ -30,4 +30,12 @@
     <ProjectReference Include="..\ApiEventConsumer.Core\ApiEventConsumer.Core.csproj" />
     <ProjectReference Include="..\ApiEventConsumer.Database\ApiEventConsumer.Database.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.LOCAL_3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
