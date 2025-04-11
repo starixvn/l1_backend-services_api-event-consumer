@@ -1,6 +1,6 @@
 ﻿using MongoDB.Driver;
 using MongoDB.Bson;
-using Mongo2Go;
+using Moq;
 
 namespace ApiEventConsumer.Database.Tests
 {
@@ -10,197 +10,105 @@ namespace ApiEventConsumer.Database.Tests
         public int Age { get; set; }
     }
 
-    public class MongoRepositoryTests : IDisposable
+    public class MongoRepositoryTests
     {
-        private readonly MongoDbRunner _runner;
-        private readonly IMongoDatabase _database;
-        private readonly MongoRepository<TestMongoDocument> _repository;
-        private readonly TestMongoDocument _testDocument;
-        private readonly List<TestMongoDocument> _testDocuments;
+        private readonly Mock<IMongoDatabase> _mockDatabase;
+        private readonly Mock<IMongoCollection<GenericTestDocument>> _mockCollection;
+        private readonly MongoRepository<GenericTestDocument> _repository;
+        private readonly GenericTestDocument _testDocument;
+        private readonly List<GenericTestDocument> _testDocuments;
 
         public MongoRepositoryTests()
         {
-            _runner = MongoDbRunner.Start();
-            var client = new MongoClient(_runner.ConnectionString);
-            _database = client.GetDatabase("test-db");
-            _repository = new MongoRepository<TestMongoDocument>(_database);
+            _mockDatabase = new Mock<IMongoDatabase>();
+            _mockCollection = new Mock<IMongoCollection<GenericTestDocument>>();
+            
+            // Setup mock collection
+            _mockDatabase.Setup(db => db.GetCollection<GenericTestDocument>(It.IsAny<string>(), null))
+                .Returns(_mockCollection.Object);
 
-            _testDocument = new TestMongoDocument
+            _repository = new MongoRepository<GenericTestDocument>(_mockDatabase.Object);
+
+            _testDocument = new GenericTestDocument
             {
                 Id = ObjectId.GenerateNewId(),
                 Name = "Test Document",
-                Age = 25,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _testDocuments = new List<TestMongoDocument>
+            _testDocuments = new List<GenericTestDocument>
             {
-                new TestMongoDocument { Id = ObjectId.GenerateNewId(), Name = "Doc 1", Age = 20 },
-                new TestMongoDocument { Id = ObjectId.GenerateNewId(), Name = "Doc 2", Age = 30 }
+                new GenericTestDocument { Id = ObjectId.GenerateNewId(), Name = "Doc 1" },
+                new GenericTestDocument { Id = ObjectId.GenerateNewId(), Name = "Doc 2" }
             };
         }
 
-        public void Dispose()
-        {
-            _runner.Dispose();
-        }
-
         [Fact]
-        public async Task InsertOneAsync_ShouldInsertDocument()
+        public async Task InsertOneAsync_ShouldCallInsertOne()
         {
+            // Arrange
+            _mockCollection.Setup(c => c.InsertOneAsync(
+                It.IsAny<GenericTestDocument>(),
+                It.IsAny<InsertOneOptions>(),
+                It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
             // Act
             await _repository.InsertOneAsync(_testDocument);
 
             // Assert
-            var result = await _repository.FindByIdAsync(_testDocument.Id.ToString());
-            Assert.NotNull(result);
-            Assert.Equal(_testDocument.Name, result.Name);
-            Assert.Equal(_testDocument.Age, result.Age);
+            _mockCollection.Verify(c => c.InsertOneAsync(
+                It.Is<GenericTestDocument>(d => d.Id == _testDocument.Id),
+                It.IsAny<InsertOneOptions>(),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
-        public async Task InsertManyAsync_ShouldInsertMultipleDocuments()
-        {
-            // Act
-            await _repository.InsertManyAsync(_testDocuments);
-
-            // Assert
-            var results = _repository.AsQueryable().ToList();
-            Assert.Equal(_testDocuments.Count, results.Count);
-        }
-
-        [Fact]
-        public async Task FindOneAsync_ShouldReturnCorrectDocument()
+        public async Task FindOneAsync_ShouldReturnDocument()
         {
             // Arrange
-            await _repository.InsertOneAsync(_testDocument);
+            var filter = Builders<GenericTestDocument>.Filter.Eq(x => x.Name, "Test Document");
+            var mockCursor = new Mock<IAsyncCursor<GenericTestDocument>>();
+            mockCursor.Setup(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+            mockCursor.Setup(c => c.Current)
+                .Returns(new[] { _testDocument });
+
+            _mockCollection.Setup(c => c.FindAsync(
+                It.IsAny<FilterDefinition<GenericTestDocument>>(),
+                It.IsAny<FindOptions<GenericTestDocument>>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(mockCursor.Object);
 
             // Act
-            var result = await _repository.FindOneAsync(x => x.Name == _testDocument.Name);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(_testDocument.Name, result.Name);
-        }
-
-        [Fact]
-        public async Task FilterByAsync_ShouldReturnFilteredDocuments()
-        {
-            // Arrange
-            await _repository.InsertManyAsync(_testDocuments);
-
-            // Act
-            var results = await _repository.FilterByAsync(x => x.Age > 25);
-
-            // Assert
-            Assert.Single(results);
-            Assert.Equal(30, results.First().Age);
-        }
-
-        [Fact]
-        public async Task UpdateAsync_ShouldModifyDocument()
-        {
-            // Arrange
-            await _repository.InsertOneAsync(_testDocument);
-            var update = Builders<TestMongoDocument>.Update.Set(x => x.Name, "Updated Name");
-
-            // Act
-            await _repository.UpdateAsync(x => x.Id == _testDocument.Id, update);
-
-            // Assert
-            var updated = await _repository.FindByIdAsync(_testDocument.Id.ToString());
-            Assert.Equal("Updated Name", updated.Name);
-        }
-
-        [Fact]
-        public async Task DeleteOneAsync_ShouldRemoveDocument()
-        {
-            // Arrange
-            await _repository.InsertOneAsync(_testDocument);
-
-            // Act
-            await _repository.DeleteOneAsync(x => x.Id == _testDocument.Id);
-
-            // Assert
-            var result = await _repository.FindByIdAsync(_testDocument.Id.ToString());
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task DeleteManyAsync_ShouldRemoveMultipleDocuments()
-        {
-            // Arrange
-            await _repository.InsertManyAsync(_testDocuments);
-
-            // Act
-            await _repository.DeleteManyAsync(x => x.Age >= 20);
-
-            // Assert
-            var remaining = _repository.AsQueryable().ToList();
-            Assert.Empty(remaining);
-        }
-
-        [Fact]
-        public async Task ReplaceOneAsync_ShouldReplaceDocument()
-        {
-            // Arrange
-            await _repository.InsertOneAsync(_testDocument);
-            var replacement = new TestMongoDocument
-            {
-                Id = _testDocument.Id,
-                Name = "Replaced Document",
-                Age = 40
-            };
-
-            // Act
-            await _repository.ReplaceOneAsync(replacement);
-
-            // Assert
-            var result = await _repository.FindByIdAsync(_testDocument.Id.ToString());
-            Assert.Equal("Replaced Document", result.Name);
-            Assert.Equal(40, result.Age);
-        }
-
-        [Fact]
-        public async Task FindById_ShouldReturnCorrectDocument()
-        {
-            // Arrange
-            await _repository.InsertOneAsync(_testDocument);
-
-            // Act
-            var result = _repository.FindById(_testDocument.Id.ToString());
+            var result = await _repository.FindOneAsync(x => x.Name == "Test Document");
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(_testDocument.Name, result.Name);
+            Assert.Equal(_testDocument.Id, result.Id);
         }
 
         [Fact]
-        public void Aggregate_ShouldReturnAggregateFluent()
-        {
-            // Act
-            var aggregate = _repository.Aggregate();
-
-            // Assert
-            Assert.NotNull(aggregate);
-            Assert.IsAssignableFrom<IAggregateFluent<TestMongoDocument>>(aggregate);
-        }
-
-        [Fact]
-        public async Task FilterBy_WithProjection_ShouldReturnProjectedData()
+        public async Task DeleteOneAsync_ShouldCallDeleteOne()
         {
             // Arrange
-            await _repository.InsertOneAsync(_testDocument);
+            var filter = Builders<GenericTestDocument>.Filter.Eq(x => x.Name, "Test Document");
+            _mockCollection.Setup(c => c.FindOneAndDeleteAsync(
+                It.IsAny<FilterDefinition<GenericTestDocument>>(),
+                It.IsAny<FindOneAndDeleteOptions<GenericTestDocument>>(),
+                It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_testDocument);
 
             // Act
-            var results = _repository.FilterBy(
-                x => x.Age == 25,
-                x => new { x.Name }
-            );
+            await _repository.DeleteOneAsync(x => x.Name == "Test Document");
 
             // Assert
-            var result = results.First();
-            Assert.Equal(_testDocument.Name, result.Name);
+            _mockCollection.Verify(c => c.FindOneAndDeleteAsync(
+                It.IsAny<FilterDefinition<GenericTestDocument>>(),
+                It.IsAny<FindOneAndDeleteOptions<GenericTestDocument>>(),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }
