@@ -33,7 +33,7 @@ namespace ApiEventConsumer.Subscribers
         void InitializeNatsConnection();
     }
 
-    public abstract class SubscriberService : ISubscriberService, IHostedService, IDisposable
+    public class SubscriberService : ISubscriberService, IHostedService, IDisposable
     {
         protected readonly string baseCode;
         protected readonly ISentryClient sentryClient;
@@ -250,7 +250,7 @@ namespace ApiEventConsumer.Subscribers
             {
                 var message = Encoding.UTF8.GetString(args.Message.Data);
                 var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
-                var systemType = appSettings.SystemType;
+                var systemType = appSettings.SystemType ?? string.Empty;
 
                 if (betCreated != null)
                 {
@@ -268,26 +268,13 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                var highStakeAmount = GetHighStakeAmount();
-                var amount = await GetAmount(bet);
-
-                if (bet.Currency == "UUS" || amount < highStakeAmount)
+                if (!await ShouldNotifyHighStake(bet))
                 {
                     return await Task.FromResult(new ChatBotResult());
                 }
 
-                var msgBuilder = new StringBuilder();
-                var game = await GetGameName(bet.GameTypeId);
-                var charName = await GetCharName(bet);
-                var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata ?? [], systemType);
-
-                var playerDeviceExtraInformation = await GetDeviceInformation(bet.PlayerId.ToString());
-                msgBuilder.Append(string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, playerDeviceExtraInformation));
-
-                _ = Task.Run(() => chatBotApi.ForwardMessage(
-                    appSettings.ChatBotApiSettings?.Token ?? string.Empty,
-                    appSettings.ChatBotApiSettings?.ConversationIds?.HighStake ?? string.Empty,
-                    msgBuilder.ToString()));
+                var message = await BuildHighStakeMessage(bet, systemType);
+                await SendChatBotMessage(message);
 
                 return await Task.FromResult(new ChatBotResult());
             }
@@ -296,6 +283,31 @@ namespace ApiEventConsumer.Subscribers
                 sentryClient.CaptureException(e);
                 return await Task.FromResult(new ChatBotResult());
             }
+        }
+
+        private async Task<bool> ShouldNotifyHighStake(BetCreated bet)
+        {
+            var highStakeAmount = GetHighStakeAmount();
+            var amount = await GetAmount(bet);
+            return bet.Currency != "UUS" && amount >= highStakeAmount;
+        }
+
+        private async Task<string> BuildHighStakeMessage(BetCreated bet, string systemType)
+        {
+            var game = await GetGameName(bet.GameTypeId);
+            var charName = await GetCharName(bet);
+            var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata ?? [], systemType);
+            var deviceInfo = await GetDeviceInformation(bet.PlayerId?.ToString() ?? string.Empty);
+
+            return string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, deviceInfo);
+        }
+
+        private Task<ChatBotResult> SendChatBotMessage(string message)
+        {
+            return chatBotApi.ForwardMessage(
+                appSettings.ChatBotApiSettings?.Token ?? string.Empty,
+                appSettings.ChatBotApiSettings?.ConversationIds?.HighStake ?? string.Empty,
+                message);
         }
 
         public void Dispose()
@@ -341,24 +353,39 @@ namespace ApiEventConsumer.Subscribers
         {
             try
             {
-                var exchangeRate = GetExchangeRate();
-                var currencies = GetCurrencies();
-                var user = await GetUser(bet.PlayerId.ToString(), bet.OperatorId ?? string.Empty);
-                var currency = currencies?.FirstOrDefault(c => c.Enabled && c.Name == bet.Currency && c.PartnerId == user?.OperatorId);
-
-                if (currency == null || exchangeRate.Code == null || currency.Code == null)
-                {
-                    return (double)bet.Amount;
-                }
-
-                var rate = exchangeRate.Code[currency.Code] * (decimal)currency.Multiplier;
-                return (double)bet.Amount * (double)rate;
+                var (currency, exchangeRate) = await GetCurrencyAndExchangeRate(bet);
+                return CalculateAmount(bet.Amount, currency, exchangeRate);
             }
             catch (Exception e)
             {
                 sentryClient.CaptureException(e);
                 return (double)bet.Amount;
             }
+        }
+
+        private async Task<(CurrencyEntity? currency, ExchangeRateEntity exchangeRate)> GetCurrencyAndExchangeRate(BetCreated bet)
+        {
+            var exchangeRate = GetExchangeRate();
+            var currencies = GetCurrencies();
+            var user = await GetUser(bet.PlayerId?.ToString() ?? string.Empty, bet.OperatorId ?? string.Empty);
+            
+            var currency = currencies?.FirstOrDefault(c => 
+                c.Enabled && 
+                c.Name == bet.Currency && 
+                c.PartnerId == user?.OperatorId);
+
+            return (currency, exchangeRate);
+        }
+
+        private static double CalculateAmount(decimal betAmount, CurrencyEntity? currency, ExchangeRateEntity exchangeRate)
+        {
+            if (currency == null || exchangeRate.Code == null || currency.Code == null)
+            {
+                return (double)betAmount;
+            }
+
+            var rate = exchangeRate.Code[currency.Code] * (decimal)currency.Multiplier;
+            return (double)betAmount * (double)rate;
         }
 
         public async Task<string> GetGameName(int gameId)
@@ -374,7 +401,7 @@ namespace ApiEventConsumer.Subscribers
 
         private async Task<string> GetCharName(BetCreated bet)
         {
-            return await gameUserService.GetCharacterNameAsync(bet.PlayerId.ToString());
+            return await gameUserService.GetCharacterNameAsync(bet.PlayerId?.ToString() ?? string.Empty);
         }
 
         public string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)

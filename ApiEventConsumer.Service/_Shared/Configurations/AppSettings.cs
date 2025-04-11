@@ -1,6 +1,4 @@
-﻿using ApiEventConsumer.Subscribers;
-
-namespace ApiEventConsumer._Shared.Configurations
+﻿namespace ApiEventConsumer._Shared.Configurations
 {
     public interface IAppSettings
     {
