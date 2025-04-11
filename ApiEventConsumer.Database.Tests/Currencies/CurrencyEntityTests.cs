@@ -165,7 +165,7 @@ namespace ApiEventConsumer.Database.Tests.Currencies
             Assert.Equal("isUncountOnTotal", GetBsonElementValue(isUncountOnTotalProperty));
         }
 
-        private string GetBsonElementValue(System.Reflection.PropertyInfo? property)
+        private static string GetBsonElementValue(System.Reflection.PropertyInfo? property)
         {
             var attribute = property?.GetCustomAttributes(typeof(BsonElementAttribute), true)
                 .FirstOrDefault() as BsonElementAttribute;

@@ -136,7 +136,7 @@ namespace ApiEventConsumer.Database.Tests.GameConfigs
             Assert.Equal(now.AddMinutes(5), gameConfig.UpdatedAt);
         }
 
-        private string GetBsonElementValue(System.Reflection.PropertyInfo? property)
+        private static string GetBsonElementValue(System.Reflection.PropertyInfo? property)
         {
             var attribute = property?.GetCustomAttributes(typeof(BsonElementAttribute), true)
                 .FirstOrDefault() as BsonElementAttribute;

@@ -156,7 +156,7 @@ namespace ApiEventConsumer.Database.Tests.ExchangeRates
             Assert.Equal(0.98765m, exchangeRate.Code["EUR"]);
         }
 
-        private string GetBsonElementValue(System.Reflection.PropertyInfo? property)
+        private static string GetBsonElementValue(System.Reflection.PropertyInfo? property)
         {
             var attribute = property?.GetCustomAttributes(typeof(BsonElementAttribute), true)
                 .FirstOrDefault() as BsonElementAttribute;
