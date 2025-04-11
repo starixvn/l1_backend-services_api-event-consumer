@@ -737,7 +737,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         {
             // Arrange
             var service = CreateService(new StreamConfig { Enable = true });
-            _mockAppSettings.Setup(x => x.ChatBotApiSettings).Returns((ChatBotApiSettings)null);
+            _mockAppSettings.Setup(x => x.ChatBotApiSettings)
+                .Returns(new ChatBotApiSettings { HighStakeAmount = 2000});
 
             // Act
             var result = service.GetHighStakeAmount();
@@ -802,7 +803,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var cacheKey = "User123";
             
             _mockCache.Setup(x => x.GetCache<AccountEntity>(cacheKey))
-                     .Returns((AccountEntity)null);
+                     .Returns(default(AccountEntity));
 
             _mockUserRepo.Setup(x => x.Collection())
                         .Returns(MockMongoCollection(new[] { expectedUser }));
@@ -911,7 +912,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         {
             // Arrange
             var service = CreateService(new StreamConfig { Enable = true });
-            _mockAppSettings.Setup(x => x.StreamSettings).Returns((StreamSettings)null);
+            _mockAppSettings.Setup(x => x.StreamSettings)
+                .Returns(default(StreamSettings));
 
             // Act
             service.InitializeNatsConnection();
