@@ -79,9 +79,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 _mockGeneralGameSettingService.Object,
                 _mockChatBotApi.Object
             );
-
-            // Correct way to setup nested properties
-
         }
 
         private class TestSubscriberService : SubscriberService

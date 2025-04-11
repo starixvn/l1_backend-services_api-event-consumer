@@ -175,7 +175,6 @@ namespace ApiEventConsumer.Service.Tests.Service
         }
     }
 
-    // Helper class to match the API response structure
     public class ApiResponse<T>
     {
         public T? Data { get; set; }

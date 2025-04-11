@@ -13,18 +13,18 @@ namespace ApiEventConsumer.Core.Tests.Games
                 GameId = 1,
                 GameName = "TestGame",
                 DisplayName = "Test Game",
-                BetChoices = new[] { "Bet1", "Bet2" },
-                Odds = new[] { "1.5", "2.0" },
-                OfferedSystem = new[] { "System1", "System2" }
+                BetChoices = ["Bet1", "Bet2"],
+                Odds = ["1.5", "2.0"],
+                OfferedSystem = ["System1", "System2"]
             };
 
             // Assert
             Assert.Equal(1, gameSettings.GameId);
             Assert.Equal("TestGame", gameSettings.GameName);
             Assert.Equal("Test Game", gameSettings.DisplayName);
-            Assert.Equal(new[] { "Bet1", "Bet2" }, gameSettings.BetChoices);
-            Assert.Equal(new[] { "1.5", "2.0" }, gameSettings.Odds);
-            Assert.Equal(new[] { "System1", "System2" }, gameSettings.OfferedSystem);
+            Assert.Equal(["Bet1", "Bet2"], gameSettings.BetChoices);
+            Assert.Equal(["1.5", "2.0"], gameSettings.Odds);
+            Assert.Equal(["System1", "System2"], gameSettings.OfferedSystem);
         }
 
         [Fact]
@@ -37,7 +37,7 @@ namespace ApiEventConsumer.Core.Tests.Games
             // Assert
             Assert.NotNull(instance1);
             Assert.NotNull(instance2);
-            Assert.Same(instance1, instance2); // Verify singleton pattern
+            Assert.Same(instance1, instance2); 
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace ApiEventConsumer.Core.Tests.Games
             var gameSettings = new GameSettings();
 
             // Assert
-            Assert.Equal(0, gameSettings.GameId); // Default value for int
+            Assert.Equal(0, gameSettings.GameId); 
             Assert.Null(gameSettings.GameName);
             Assert.Null(gameSettings.DisplayName);
             Assert.Null(gameSettings.BetChoices);
@@ -91,7 +91,7 @@ namespace ApiEventConsumer.Core.Tests.Games
             var games = gamesSettings.Games;
 
             // Assert
-            Assert.Null(games); // Since we haven't initialized any games
+            Assert.Null(games); 
         }
 
         [Theory]

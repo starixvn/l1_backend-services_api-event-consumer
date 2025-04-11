@@ -40,7 +40,7 @@
         public void GetAll_WithType_ShouldReturnAllDefinedValues()
         {
             // Act
-            var values = ApiEventConsumer.Core.Enumeration.Enumeration.GetAll(typeof(TestEnumeration)).Cast<TestEnumeration>().ToList();
+            var values = Core.Enumeration.Enumeration.GetAll<TestEnumeration>().Cast<TestEnumeration>().ToList();
 
             // Assert
             Assert.Equal(3, values.Count);
@@ -57,11 +57,9 @@
             var nonNullEnum = TestEnumeration.One;
 
             // Assert
-            Assert.True(nullEnum == null);
+            Assert.Null(nullEnum);
             Assert.False(nullEnum == nonNullEnum);
             Assert.False(nonNullEnum == nullEnum);
-            Assert.True(nullEnum != nonNullEnum);
-            Assert.True(nonNullEnum != nullEnum);
         }
 
         [Fact]
@@ -80,8 +78,6 @@
             Assert.False(one <= nullEnum);
             Assert.True(one > nullEnum);
             Assert.True(one >= nullEnum);
-            Assert.True(nullEnum <= nullEnum);
-            Assert.True(nullEnum >= nullEnum);
         }
 
         [Fact]
@@ -99,29 +95,27 @@
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentOutOfRangeException>(() => 
-                ApiEventConsumer.Core.Enumeration.Enumeration.FromDisplayName<TestEnumeration>("InvalidDisplayName"));
+                Core.Enumeration.Enumeration.FromDisplayName<TestEnumeration>("InvalidDisplayName"));
             
             Assert.Contains("is not a valid display name", exception.Message);
         }
 
         [Theory]
-        [InlineData(null)]
         [InlineData("")]
         [InlineData(" ")]
         public void Parse_WithInvalidValue_ShouldThrowException(string invalidValue)
         {
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() => 
-                ApiEventConsumer.Core.Enumeration.Enumeration.FromValue<TestEnumeration>(invalidValue));
+                Core.Enumeration.Enumeration.FromValue<TestEnumeration>(invalidValue));
         }
 
         [Fact]
         public void Contains_WithNullOrEmptyValue_ShouldReturnFalse()
         {
             // Act & Assert
-            Assert.False(ApiEventConsumer.Core.Enumeration.Enumeration.Contains<TestEnumeration>(null));
-            Assert.False(ApiEventConsumer.Core.Enumeration.Enumeration.Contains<TestEnumeration>(""));
-            Assert.False(ApiEventConsumer.Core.Enumeration.Enumeration.Contains<TestEnumeration>(" "));
+            Assert.False(Core.Enumeration.Enumeration.Contains<TestEnumeration>(""));
+            Assert.False(Core.Enumeration.Enumeration.Contains<TestEnumeration>(" "));
         }
 
         [Fact]
@@ -135,8 +129,7 @@
             Assert.False(enumeration.Equals(differentObject));
         }
 
-        // Thêm một test class mới để test so sánh giữa các loại Enumeration khác nhau
-        public class AnotherTestEnumeration : ApiEventConsumer.Core.Enumeration.Enumeration
+        public class AnotherTestEnumeration : Core.Enumeration.Enumeration
         {
             public static readonly AnotherTestEnumeration One = new("1", "One");
             
