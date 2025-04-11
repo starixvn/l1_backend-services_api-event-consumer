@@ -26,17 +26,13 @@ namespace ApiEventConsumer
                     {
                         config.Port = appSettings.Port;
                         config.UrlPath = "/";
-                        config.Hostname = "*";
+                        //config.Hostname = "*";
 
                         return config;
                     });
 
                     services.AddChatBotServices(appSettings);
-
-                    if (appSettings.SubcriberSettings != null)
-                    {
-                        services.AddSubcriberServices(appSettings.SubcriberSettings);
-                    }
+                    services.AddSubcriberServices();
 
                     if (appSettings.DatabaseSettings != null)
                     {

@@ -5,7 +5,7 @@ namespace ApiEventConsumer._Shared.Configurations
     public interface IAppSettings
     {
         public int Port { get; set; }
-        public SubscriberSettings? SubcriberSettings { get; set; }
+        public string? SystemType { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
@@ -14,7 +14,7 @@ namespace ApiEventConsumer._Shared.Configurations
     public class AppSettings : IAppSettings
     {
         public int Port { get; set; }
-        public SubscriberSettings? SubcriberSettings { get; set; }
+        public string? SystemType { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
@@ -55,5 +55,7 @@ namespace ApiEventConsumer._Shared.Configurations
         public string? Host { get; set; }
 
         public bool Enable { get; set; }
+        public string? StreamName { get; set; }
+        public string? BetMessages { get; set; }
     }
 }

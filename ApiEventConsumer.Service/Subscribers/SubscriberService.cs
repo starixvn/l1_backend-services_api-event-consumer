@@ -141,11 +141,6 @@ namespace ApiEventConsumer.Subscribers
             uaParser = Parser.GetDefault();
         }
 
-        protected abstract StreamConfig GetStreamConfigPath();
-        protected abstract string GetSystemTypePath();
-        protected abstract string GetStreamNamePath();
-        protected abstract string GetBetMessages();
-
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             InitializeNatsConnection();
@@ -163,8 +158,7 @@ namespace ApiEventConsumer.Subscribers
             try
             {
                 var streamSettings = appSettings.StreamSettings;
-                var streamConfig = GetStreamConfigPath();
-                if (streamSettings?.Enable != true || streamConfig?.Enable != true)
+                if (streamSettings?.Enable != true)
                 {
                     return;
                 }
@@ -197,9 +191,9 @@ namespace ApiEventConsumer.Subscribers
 
         private void ConfigureJetStream()
         {
-            var streamName = GetStreamNamePath();
-            var betMessages = GetBetMessages();
-            if (_connection == null)
+            var streamName = appSettings?.StreamSettings?.StreamName;
+            var betMessages = appSettings?.StreamSettings?.BetMessages;
+            if (_connection == null || streamName == null || betMessages == null)
             {
                 return;
             }
@@ -256,7 +250,7 @@ namespace ApiEventConsumer.Subscribers
             {
                 var message = Encoding.UTF8.GetString(args.Message.Data);
                 var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
-                var systemType = GetSystemTypePath();
+                var systemType = appSettings.SystemType;
 
                 if (betCreated != null)
                 {

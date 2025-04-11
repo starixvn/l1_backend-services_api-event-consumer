@@ -4,24 +4,17 @@ using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
-using ApiEventConsumer.Subscribers.SC;
-using ApiEventConsumer.Subscribers.VG;
 using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Subscribers.GN;
 
 namespace ApiEventConsumer.Subscribers
 {
     public static class SubscriberMiddleware
     {
-        public static void AddSubcriberServices(this IServiceCollection services, SubscriberSettings settings)
+        public static void AddSubcriberServices(this IServiceCollection services)
         {
             services.AddMemoryCache();
-
-            services.AddSingleton(settings);
-            services.AddHostedService<SCSubscriberService>();
-            services.AddHostedService<VGSubcriberService>();
-            services.AddHostedService<GNSubscriberService>();
-
+            services.AddHostedService<DefaultSubscriberService>();
+            services.AddSingleton<string>(sp => "DEFAULT");
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
             services.AddSingleton<IGenericRepository<CurrencyEntity>, MongoRepository<CurrencyEntity>>();
