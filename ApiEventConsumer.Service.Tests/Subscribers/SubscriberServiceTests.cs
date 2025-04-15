@@ -89,7 +89,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 ConfigurationDependencies configurations,
                 RepositoryDependencies repositories,
                 ServiceDependencies services)
-                : base("TEST", sentryClient, logger, configurations, repositories, services)
+                : base(sentryClient, logger, configurations, repositories, services)
             {
             }
         }
@@ -191,7 +191,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var sut = CreateSubscriberService();
 
             // Act
-            var result = await sut.CalAmountOnBaseCurrency(bet);
+            var result = await sut.GetAmount(bet);
 
             // Assert
             result.Should().Be(100);
@@ -559,7 +559,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 .Throws(new Exception("Database error"));
 
             // Act
-            var result = await service.CalAmountOnBaseCurrency(bet);
+            var result = await service.GetAmount(bet);
 
             // Assert
             Assert.Equal(100, result);

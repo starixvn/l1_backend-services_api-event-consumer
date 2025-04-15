@@ -2,16 +2,15 @@ using Sentry;
 
 namespace ApiEventConsumer.Subscribers
 {
-    public class DefaultSubscriberService : SubscriberService
+    public class ConsumerService : SubscriberService
     {
-        public DefaultSubscriberService(
-            string baseCode,
+        public ConsumerService(
             ISentryClient sentryClient,
             ILogger<SubscriberService> logger,
             ConfigurationDependencies configurations,
             RepositoryDependencies repositories,
             ServiceDependencies services)
-            : base(baseCode, sentryClient, logger, configurations, repositories, services)
+            : base(sentryClient, logger, configurations, repositories, services)
         {
         }
     }

@@ -30,13 +30,11 @@ namespace ApiEventConsumer.Subscribers
 
     public interface ISubscriberService
     {
-        string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType);
         void InitializeNatsConnection();
     }
 
     public class SubscriberService : ISubscriberService, IHostedService, IDisposable
     {
-        protected readonly string baseCode;
         protected readonly ISentryClient sentryClient;
         protected readonly IConfiguration _configuration;
         protected readonly ILogger<SubscriberService> _logger;
@@ -116,14 +114,12 @@ namespace ApiEventConsumer.Subscribers
         }
 
         protected SubscriberService(
-            string baseCode,
             ISentryClient sentryClient,
             ILogger<SubscriberService> logger,
             ConfigurationDependencies configurations,
             RepositoryDependencies repositories,
             ServiceDependencies services)
         {
-            this.baseCode = baseCode;
             this.sentryClient = sentryClient;
             _logger = logger;
             _configuration = configurations.Configuration;
@@ -347,11 +343,6 @@ namespace ApiEventConsumer.Subscribers
         }
 
         public async Task<double> GetAmount(BetCreated bet)
-        {
-            return await CalAmountOnBaseCurrency(bet);
-        }
-
-        public async Task<double> CalAmountOnBaseCurrency(BetCreated bet)
         {
             try
             {

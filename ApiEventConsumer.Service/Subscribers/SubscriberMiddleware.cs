@@ -13,8 +13,7 @@ namespace ApiEventConsumer.Subscribers
         public static void AddSubcriberServices(this IServiceCollection services)
         {
             services.AddMemoryCache();
-            services.AddHostedService<DefaultSubscriberService>();
-            services.AddSingleton<string>(sp => "DEFAULT");
+            services.AddHostedService<ConsumerService>();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
             services.AddSingleton<IGenericRepository<CurrencyEntity>, MongoRepository<CurrencyEntity>>();
