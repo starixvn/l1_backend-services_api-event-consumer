@@ -298,8 +298,9 @@ namespace ApiEventConsumer.Subscribers
             var charName = await GetCharName(bet);
             var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata ?? [], systemType);
             var deviceInfo = await GetDeviceInformation(bet.PlayerId?.ToString() ?? string.Empty);
+            var formattedAmount = bet.Amount % 1 == 0 ? ((int)bet.Amount).ToString() : bet.Amount.ToString();
 
-            return string.Format(HighStakeMessageTemplate, version, charName, bet.Amount, bet.Currency, game, deviceInfo);
+            return string.Format(HighStakeMessageTemplate, version, charName, formattedAmount, bet.Currency, game, deviceInfo);
         }
 
         private Task<ChatBotResult> SendChatBotMessage(string message)
