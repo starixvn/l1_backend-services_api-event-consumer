@@ -397,7 +397,7 @@ namespace ApiEventConsumer.Subscribers
             return await gameUserService.GetCharacterNameAsync(bet.PlayerId?.ToString() ?? string.Empty);
         }
 
-        public string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
+        public static string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
         {
             var systemPrefix = GetSystemPrefixName(systemType);
 
