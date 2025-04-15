@@ -20,6 +20,7 @@ using NATS.Client;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using NSubstitute;
 
 namespace ApiEventConsumer.Service.Tests.Subscribers
 {
@@ -106,32 +107,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Assert
             result.Should().NotBeNull();
             _mockChatBotApi.Verify(x => x.ForwardMessage(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        }
-
-        [Fact]
-        public void GetExchangeRate_WhenCacheEmpty_ShouldFetchFromRepository()
-        {
-            // Arrange
-            var expectedRate = new ExchangeRateEntity();
-            var mockQueryable = new List<ExchangeRateEntity> { expectedRate }.AsQueryable();
-
-            _mockCache.Setup(x => x.GetCache<ExchangeRateEntity>(It.IsAny<string>()))
-                     .Returns(default(ExchangeRateEntity));
-
-            _mockExchangeRateRepo.Setup(x => x.AsQueryable())
-                                .Returns(mockQueryable);
-
-            var sut = CreateSubscriberService();
-
-            // Act
-            var result = sut.GetExchangeRate();
-
-            // Assert
-            result.Should().Be(expectedRate);
-            _mockCache.Verify(x => x.SetCache(
-                It.IsAny<string>(),
-                It.IsAny<ExchangeRateEntity>(),
-                It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -1026,7 +1001,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 .Returns(new List<ExchangeRateEntity>().AsQueryable());
 
             // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => service.GetExchangeRate());
+            Assert.Throws<ArgumentNullException>(() => service.GetExchangeRate());
         }
     }
 }

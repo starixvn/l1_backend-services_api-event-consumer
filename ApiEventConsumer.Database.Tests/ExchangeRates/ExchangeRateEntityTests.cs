@@ -21,7 +21,7 @@ namespace ApiEventConsumer.Database.Tests.ExchangeRates
         {
             // Arrange
             var now = DateTime.UtcNow;
-            var codes = new Dictionary<string, decimal>
+            var codes = new Dictionary<string, Decimal128>
             {
                 { "USD", 1.0m },
                 { "EUR", 0.85m },
@@ -75,7 +75,7 @@ namespace ApiEventConsumer.Database.Tests.ExchangeRates
             // Arrange
             var exchangeRate = new ExchangeRateEntity
             {
-                Code = new Dictionary<string, decimal>
+                Code = new Dictionary<string, Decimal128>
                 {
                     { "USD", 1.0m },
                     { "EUR", 0.85m }
@@ -130,7 +130,7 @@ namespace ApiEventConsumer.Database.Tests.ExchangeRates
             // Arrange
             var exchangeRate = new ExchangeRateEntity
             {
-                Code = new Dictionary<string, decimal>()
+                Code = new Dictionary<string, Decimal128>()
             };
 
             // Assert
@@ -144,7 +144,7 @@ namespace ApiEventConsumer.Database.Tests.ExchangeRates
             // Arrange
             var exchangeRate = new ExchangeRateEntity
             {
-                Code = new Dictionary<string, decimal>
+                Code = new Dictionary<string, Decimal128>
                 {
                     { "USD", 1.12345m },
                     { "EUR", 0.98765m }
