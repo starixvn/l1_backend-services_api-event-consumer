@@ -386,7 +386,7 @@ namespace ApiEventConsumer.Subscribers
                 return (double)betAmount;
             }
 
-            var rate = exchangeRate.Code[currency.Code] * (decimal)currency.Multiplier;
+            var rate = (decimal)exchangeRate.Code[currency.Code] * (decimal)currency.Multiplier;
             return (double)betAmount * (double)rate;
         }
 
@@ -493,8 +493,20 @@ namespace ApiEventConsumer.Subscribers
             var exchangeRate = cache.GetCache<ExchangeRateEntity>(CachedKeys.ExchangeRate.ToString());
             if (exchangeRate == default)
             {
-                exchangeRate = this.exchangeRateRepository.AsQueryable().OrderByDescending(ex => ex.ExId).First();
-                cache.SetCache(CachedKeys.ExchangeRate.ToString(), exchangeRate, CacheExpireInMinutes);
+                var projection = Builders<ExchangeRateEntity>.Projection
+                    .Include(x => x.ExId)
+                    .Include(x => x.Code);
+
+                exchangeRate = this.exchangeRateRepository.Collection()
+                    .Find(Builders<ExchangeRateEntity>.Filter.Empty)
+                    .Project<ExchangeRateEntity>(projection)
+                    .SortByDescending(x => x.ExId)
+                    .FirstOrDefault() ?? new ExchangeRateEntity();
+
+                if (exchangeRate.ExId != 0) 
+                {
+                    cache.SetCache(CachedKeys.ExchangeRate.ToString(), exchangeRate, CacheExpireInMinutes);
+                }
             }
 
             return exchangeRate;

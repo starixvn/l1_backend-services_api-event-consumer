@@ -11,8 +11,10 @@ namespace ApiEventConsumer.Database.Entities
 
         public string? UserIdStr { get; set; }
 
+        [BsonElement("operatorId")]
         public string? OperatorId { get; set; }
 
+        [BsonElement("playerId")]
         public string? PlayerId { get; set; }
     }
 

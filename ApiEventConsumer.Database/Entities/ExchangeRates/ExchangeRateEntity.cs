@@ -1,4 +1,5 @@
 ﻿using ApiEventConsumer.Database.Attributes;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace ApiEventConsumer.Database.Entities.ExchangeRates
@@ -21,6 +22,6 @@ namespace ApiEventConsumer.Database.Entities.ExchangeRates
         public string? Source { get; set; }
 
         [BsonElement("code")]
-        public Dictionary<string, decimal>? Code { get; set; }
+        public Dictionary<string, Decimal128>? Code { get; set; }
     }
 }
