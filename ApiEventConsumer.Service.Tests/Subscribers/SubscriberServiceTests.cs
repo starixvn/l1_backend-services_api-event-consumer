@@ -209,7 +209,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var sut = CreateSubscriberService();
 
             // Act
-            var result = sut.GetVersionName(version, metadata, systemType);
+            var result = SubscriberService.GetVersionName(version, metadata, systemType);
 
             // Assert
             result.Should().Be(expected);
@@ -915,7 +915,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var metadata = new Dictionary<string, string> { { "mode", "Portrait" } };
 
             // Act
-            var result = service.GetVersionName(Versions.Instant, metadata, SystemType.SC1);
+            var result = SubscriberService.GetVersionName(Versions.Instant, metadata, SystemType.SC1);
 
             // Assert
             Assert.Equal("SI", result);
@@ -929,7 +929,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var metadata = new Dictionary<string, string>();
 
             // Act
-            var result = service.GetVersionName(Versions.MegaKeno, metadata, SystemType.SC1);
+            var result = SubscriberService.GetVersionName(Versions.MegaKeno, metadata, SystemType.SC1);
 
             // Assert
             Assert.Equal("MK", result);
@@ -943,7 +943,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var metadata = new Dictionary<string, string>();
 
             // Act
-            var result = service.GetVersionName(Versions.Cocos, metadata, SystemType.SC1);
+            var result = SubscriberService.GetVersionName(Versions.Cocos, metadata, SystemType.SC1);
 
             // Assert
             Assert.Equal("SC", result);
