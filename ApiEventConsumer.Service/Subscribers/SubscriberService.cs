@@ -18,6 +18,7 @@ using ApiEventConsumer.Core.Models.NatMessage;
 using Sentry.Protocol;
 using Sentry;
 using NATS.Client.JetStream;
+using System.Globalization;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -298,7 +299,7 @@ namespace ApiEventConsumer.Subscribers
             var charName = await GetCharName(bet);
             var version = GetVersionName(Enum.Parse<Versions>(bet.System.ToString()), bet.Metadata ?? [], systemType);
             var deviceInfo = await GetDeviceInformation(bet.PlayerId?.ToString() ?? string.Empty);
-            var formattedAmount = bet.Amount % 1 == 0 ? ((int)bet.Amount).ToString() : bet.Amount.ToString();
+            var formattedAmount = bet.Amount % 1 == 0 ? ((int)bet.Amount).ToString() : bet.Amount.ToString(CultureInfo.InvariantCulture);
 
             return string.Format(HighStakeMessageTemplate, version, charName, formattedAmount, bet.Currency, game, deviceInfo);
         }
