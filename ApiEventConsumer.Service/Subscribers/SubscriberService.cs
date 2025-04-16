@@ -249,7 +249,7 @@ namespace ApiEventConsumer.Subscribers
                 var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
                 var systemType = appSettings.SystemType ?? string.Empty;
 
-                if (betCreated != null && (double)betCreated.Amount > appSettings.HighStake)
+                if (betCreated != null && (double)betCreated.Amount >= appSettings.HighStake)
                 {
                     await NotifyHighStake(betCreated, systemType);
                 }
