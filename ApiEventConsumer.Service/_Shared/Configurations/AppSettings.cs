@@ -39,8 +39,6 @@
     public class ConversationIds
     {
         public string? HighStake { get; set; }
-        public string? Promotion { get; set; }
-        public string? PromotionTournament { get; set; }
     }
 
     public class DatabaseSettings

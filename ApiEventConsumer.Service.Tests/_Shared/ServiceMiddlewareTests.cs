@@ -98,9 +98,7 @@ namespace ApiEventConsumer.Service.Tests._Shared
                     HighStakeAmount = 30,
                     ConversationIds = new ConversationIds
                     {
-                        HighStake = string.Empty,
-                        Promotion = string.Empty,
-                        PromotionTournament = string.Empty
+                        HighStake = string.Empty
                     }
                 },
                 StreamSettings = new StreamSettings
