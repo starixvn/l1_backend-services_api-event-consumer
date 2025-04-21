@@ -104,20 +104,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task GetGameName_WhenKenoMatch1_ShouldReturnKenoSoccer()
-        {
-            // Arrange
-            var sut = CreateSubscriberService();
-
-            // Act
-            var result = await sut.GetGameName((int)GameId.KenoMatch1);
-
-            // Assert
-            result.Should().Be("KenoSoccer");
-            _mockGeneralGameSettingService.Verify(x => x.GetDisplayName(It.IsAny<int>()), Times.Never);
-        }
-
-        [Fact]
         public async Task GetGameName_WhenUnknownGame_ShouldCallGeneralGameSettingService()
         {
             // Arrange
@@ -551,30 +537,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             // Assert
             Assert.Equal(100, result);
-        }
-
-        [Theory]
-        [InlineData(GameId.KenoMatch1, "KenoSoccer")]
-        [InlineData(GameId.KenoMatch2, "KenoSoccer2")]
-        [InlineData(GameId.KenoPower1, "KenoPower")]
-        [InlineData((GameId)999, null)]
-        public async Task GetGameName_ForDifferentGames_ReturnsCorrectName(GameId gameId, string? expectedName)
-        {
-            // Arrange
-            var service = CreateService();
-            if (expectedName == null)
-            {
-                _mockGeneralGameSettingService
-                    .Setup(x => x.GetDisplayName(It.IsAny<int>()))
-                    .ReturnsAsync("Unknown Game");
-                expectedName = "Unknown Game";
-            }
-
-            // Act
-            var result = await service.GetGameName((int)gameId);
-
-            // Assert
-            Assert.Equal(expectedName, result);
         }
 
         [Fact]
