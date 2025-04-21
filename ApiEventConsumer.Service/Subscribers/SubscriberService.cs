@@ -206,6 +206,7 @@ namespace ApiEventConsumer.Subscribers
                     await Task.Delay(delayMilliseconds);
                     if (AttemptReconnectionAsync(options))
                     {
+                        ConfigureJetStream();
                         return;
                     }
                 }
