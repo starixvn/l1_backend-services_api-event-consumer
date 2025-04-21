@@ -19,6 +19,7 @@ using Sentry.Protocol;
 using Sentry;
 using NATS.Client.JetStream;
 using System.Globalization;
+using Polly;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -156,27 +157,35 @@ namespace ApiEventConsumer.Subscribers
 
         private async Task TryReconnectAsync(Options options)
         {
-            const int maxRetries = 5;
-            const int delayMilliseconds = 2000;
+            var policy = Policy
+                .Handle<Exception>()
+                .WaitAndRetryAsync(
+                    retryCount: 5,
+                    sleepDurationProvider: retryAttempt => 
+                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    onRetry: (exception, timeSpan, retryCount, context) =>
+                    {
+                        sentryClient.CaptureException(
+                            new Exception($"Reconnection attempt {retryCount} failed"));
+                    });
 
-            for (int i = 0; i < maxRetries; i++)
+            try 
             {
-                try
+                await policy.ExecuteAsync(async () =>
                 {
-                    await Task.Delay(delayMilliseconds);
-                    if (AttemptReconnectionAsync(options))
+                    if (await Task.FromResult(AttemptReconnectionAsync(options)))
                     {
                         ConfigureJetStream();
                         return;
                     }
-                }
-                catch (Exception ex)
-                {
-                    sentryClient.CaptureException(new Exception($"Reconnection attempt {i + 1} failed"));
-                }
+                    throw new Exception("Connection attempt failed");
+                });
             }
-            
-            sentryClient.CaptureException(new Exception("Failed to reconnect to NATS server after maximum retries"));
+            catch (Exception)
+            {
+                sentryClient.CaptureException(
+                    new Exception("Failed to reconnect to NATS server after maximum retries"));
+            }
         }
 
         private bool AttemptReconnectionAsync(Options options)
