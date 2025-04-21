@@ -163,7 +163,7 @@ namespace ApiEventConsumer.Subscribers
                     retryCount: 5,
                     sleepDurationProvider: retryAttempt => 
                         TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                    onRetry: (exception, timeSpan, retryCount, context) =>
+                    onRetry: (_, _, retryCount, _) =>
                     {
                         sentryClient.CaptureException(
                             new Exception($"Reconnection attempt {retryCount} failed"));
@@ -178,7 +178,7 @@ namespace ApiEventConsumer.Subscribers
                         ConfigureJetStream();
                         return;
                     }
-                    throw new Exception("Connection attempt failed");
+                    throw new InvalidOperationException("Connection attempt failed");
                 });
             }
             catch (Exception)
