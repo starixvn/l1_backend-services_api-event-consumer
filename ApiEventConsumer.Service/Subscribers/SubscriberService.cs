@@ -173,17 +173,62 @@ namespace ApiEventConsumer.Subscribers
         {
             var options = ConnectionFactory.GetDefaultOptions();
             options.Url = streamSettings.Host;
-            options.DisconnectedEventHandler = (_, args) =>
-            {
-                sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-            };
-
+            
+            ConfigureDisconnectHandler(options);
+            
             _connection = new ConnectionFactory().CreateConnection(options);
-
+            
             if (_connection.State != ConnState.CONNECTED)
             {
                 throw new InvalidOperationException($"Failed to connect to NATS server. State: {_connection.State}");
             }
+        }
+
+        private void ConfigureDisconnectHandler(Options options)
+        {
+            options.DisconnectedEventHandler = async (_, args) =>
+            {
+                sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
+                _logger.LogWarning("NATS connection lost. Attempting to reconnect...");
+                await TryReconnectAsync(options);
+            };
+        }
+
+        private async Task TryReconnectAsync(Options options)
+        {
+            const int maxRetries = 5;
+            const int delayMilliseconds = 2000;
+
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    await Task.Delay(delayMilliseconds);
+                    if (AttemptReconnectionAsync(options))
+                    {
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Reconnection attempt {i + 1} failed");
+                }
+            }
+            
+            sentryClient.CaptureException(new Exception("Failed to reconnect to NATS server after maximum retries"));
+        }
+
+        private bool AttemptReconnectionAsync(Options options)
+        {
+            _connection = new ConnectionFactory().CreateConnection(options);
+            
+            if (_connection.State == ConnState.CONNECTED)
+            {
+                _logger.LogInformation("Successfully reconnected to NATS server");
+                return true;
+            }
+            
+            return false;
         }
 
         private void ConfigureJetStream()
