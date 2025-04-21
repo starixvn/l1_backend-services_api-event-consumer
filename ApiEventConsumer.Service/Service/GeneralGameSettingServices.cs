@@ -8,11 +8,11 @@ namespace ApiEventConsumer.Service.Service
         Task<string> GetDisplayName(int gameId);
     }
 
-    public class GeneralGameSettingService : IGeneralGameSettingService
+    public class GeneralGameSettingServices : IGeneralGameSettingService
     {
         private readonly IGenericRepository<GameConfigEntity> repository;
 
-        public GeneralGameSettingService(IGenericRepository<GameConfigEntity> repository)
+        public GeneralGameSettingServices(IGenericRepository<GameConfigEntity> repository)
         {
             this.repository = repository;
         }

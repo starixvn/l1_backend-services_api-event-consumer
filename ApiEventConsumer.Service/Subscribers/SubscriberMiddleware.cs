@@ -13,7 +13,7 @@ namespace ApiEventConsumer.Subscribers
         public static void AddSubcriberServices(this IServiceCollection services)
         {
             services.AddMemoryCache();
-            services.AddHostedService<ConsumerService>();
+            services.AddHostedService<ConsumerServices>();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
             services.AddSingleton<IGenericRepository<CurrencyEntity>, MongoRepository<CurrencyEntity>>();
@@ -22,26 +22,23 @@ namespace ApiEventConsumer.Subscribers
             services.AddSingleton<IGenericRepository<GameConfigEntity>, MongoRepository<GameConfigEntity>>();
 
             services.AddSingleton<ICacheManager, CacheManager>();
-            services.AddSingleton<IGameUserService, GameUserService>();
-            services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingService>();
+            services.AddSingleton<IGameUserService, GameUserServices>();
+            services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
 
-            services.AddSingleton<SubscriberService.RepositoryDependencies>(sp => new SubscriberService.RepositoryDependencies(
+            services.AddSingleton<RepositoryServices>(sp => new RepositoryServices(
                 sp.GetRequiredService<IGenericRepository<UserSessionEntity>>(),
                 sp.GetRequiredService<IGenericRepository<ExchangeRateEntity>>(),
                 sp.GetRequiredService<IGenericRepository<CurrencyEntity>>(),
                 sp.GetRequiredService<IGenericRepository<AccountEntity>>()
             ));
 
-            services.AddSingleton<SubscriberService.ServiceDependencies>(sp => new SubscriberService.ServiceDependencies(
-                sp.GetRequiredService<IGameUserService>(),
-                sp.GetRequiredService<IGeneralGameSettingService>(),
-                sp.GetRequiredService<IChatBotApi>()
-            ));
-
-            services.AddSingleton<SubscriberService.ConfigurationDependencies>(sp => new SubscriberService.ConfigurationDependencies(
+            services.AddSingleton<ConfigurationServices>(sp => new ConfigurationServices(
                     sp.GetRequiredService<IConfiguration>(),
                     sp.GetRequiredService<ICacheManager>(),
-                    sp.GetRequiredService<IAppSettings>()
+                    sp.GetRequiredService<IAppSettings>(),
+                    sp.GetRequiredService<IGameUserService>(),
+                    sp.GetRequiredService<IGeneralGameSettingService>(),
+                    sp.GetRequiredService<IChatBotApi>()
                 ));
         }
     }

@@ -9,13 +9,13 @@ namespace ApiEventConsumer.Service.Service
         Task<string> GetCharacterNameAsync(string memberId);
     }
 
-    public class GameUserService : IGameUserService
+    public class GameUserServices : IGameUserService
     {
 
         private readonly IGenericRepository<AccountInfoEntity> accountInfoRepository;
         private readonly IGenericRepository<AccountEntity> accountRepository;
 
-        public GameUserService(
+        public GameUserServices(
             IGenericRepository<AccountInfoEntity> accountInfoRepository,
             IGenericRepository<AccountEntity> accountRepository)
         {

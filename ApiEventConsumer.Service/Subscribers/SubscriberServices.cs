@@ -33,11 +33,10 @@ namespace ApiEventConsumer.Subscribers
         void InitializeNatsConnection();
     }
 
-    public class SubscriberService : ISubscriberService, IHostedService, IDisposable
+    public class SubscriberServices : ISubscriberService, IHostedService, IDisposable
     {
         protected readonly ISentryClient sentryClient;
-        protected readonly IConfiguration _configuration;
-        protected readonly ILogger<SubscriberService> _logger;
+        protected readonly IConfiguration configuration;
         private readonly ICacheManager cache;
         private readonly IGenericRepository<UserSessionEntity> usersessionRepository;
         private readonly IGenericRepository<ExchangeRateEntity> exchangeRateRepository;
@@ -45,8 +44,8 @@ namespace ApiEventConsumer.Subscribers
         private readonly IGenericRepository<AccountEntity> userRepository;
         private readonly Parser uaParser;
 
-        private IConnection? _connection;
-        private IAsyncSubscription? _betCreatedSub;
+        private IConnection? connection;
+        private IAsyncSubscription? betCreatedSub;
 
         private const string HighStakeMessageTemplate = "{0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
@@ -57,27 +56,8 @@ namespace ApiEventConsumer.Subscribers
         private readonly IGameUserService gameUserService;
         private readonly IChatBotApi chatBotApi;
 
-        private bool _disposed;
+        private bool disposed;
 
-        public class RepositoryDependencies
-        {
-            public IGenericRepository<UserSessionEntity> UserSessionRepository { get; }
-            public IGenericRepository<ExchangeRateEntity> ExchangeRateRepository { get; }
-            public IGenericRepository<CurrencyEntity> CurrencyRepository { get; }
-            public IGenericRepository<AccountEntity> UserRepository { get; }
-
-            public RepositoryDependencies(
-                IGenericRepository<UserSessionEntity> userSessionRepository,
-                IGenericRepository<ExchangeRateEntity> exchangeRateRepository,
-                IGenericRepository<CurrencyEntity> currencyRepository,
-                IGenericRepository<AccountEntity> userRepository)
-            {
-                UserSessionRepository = userSessionRepository;
-                ExchangeRateRepository = exchangeRateRepository;
-                CurrencyRepository = currencyRepository;
-                UserRepository = userRepository;
-            }
-        }
 
         public class ServiceDependencies
         {
@@ -96,33 +76,13 @@ namespace ApiEventConsumer.Subscribers
             }
         }
 
-        public class ConfigurationDependencies
-        {
-            public IConfiguration Configuration { get; }
-            public ICacheManager Cache { get; }
-            public IAppSettings AppSettings { get; }
-
-            public ConfigurationDependencies(
-                IConfiguration configuration,
-                ICacheManager cache,
-                IAppSettings appSettings)
-            {
-                Configuration = configuration;
-                Cache = cache;
-                AppSettings = appSettings;
-            }
-        }
-
-        protected SubscriberService(
+        protected SubscriberServices(
             ISentryClient sentryClient,
-            ILogger<SubscriberService> logger,
-            ConfigurationDependencies configurations,
-            RepositoryDependencies repositories,
-            ServiceDependencies services)
+            ConfigurationServices configurations,
+            RepositoryServices repositories)
         {
             this.sentryClient = sentryClient;
-            _logger = logger;
-            _configuration = configurations.Configuration;
+            configuration = configurations.Configuration;
             this.appSettings = configurations.AppSettings;
             this.cache = configurations.Cache;
             
@@ -131,9 +91,9 @@ namespace ApiEventConsumer.Subscribers
             this.currencyRepository = repositories.CurrencyRepository;
             this.userRepository = repositories.UserRepository;
             
-            this.gameUserService = services.GameUserService;
-            this.generalGameSettingService = services.GeneralGameSettingService;
-            this.chatBotApi = services.ChatBotApi;
+            this.gameUserService = configurations.GameUserService;
+            this.generalGameSettingService = configurations.GeneralGameSettingService;
+            this.chatBotApi = configurations.ChatBotApi;
             
             uaParser = Parser.GetDefault();
         }
@@ -176,11 +136,11 @@ namespace ApiEventConsumer.Subscribers
             
             ConfigureDisconnectHandler(options);
             
-            _connection = new ConnectionFactory().CreateConnection(options);
+            connection = new ConnectionFactory().CreateConnection(options);
             
-            if (_connection.State != ConnState.CONNECTED)
+            if (connection.State != ConnState.CONNECTED)
             {
-                throw new InvalidOperationException($"Failed to connect to NATS server. State: {_connection.State}");
+                throw new InvalidOperationException($"Failed to connect to NATS server. State: {connection.State}");
             }
         }
 
@@ -189,7 +149,7 @@ namespace ApiEventConsumer.Subscribers
             options.DisconnectedEventHandler = async (_, args) =>
             {
                 sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-                _logger.LogWarning("NATS connection lost. Attempting to reconnect...");
+                sentryClient.CaptureMessage("NATS connection lost. Attempting to reconnect...");
                 await TryReconnectAsync(options);
             };
         }
@@ -212,7 +172,7 @@ namespace ApiEventConsumer.Subscribers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Reconnection attempt {i + 1} failed");
+                    sentryClient.CaptureException(new Exception($"Reconnection attempt {i + 1} failed"));
                 }
             }
             
@@ -221,11 +181,11 @@ namespace ApiEventConsumer.Subscribers
 
         private bool AttemptReconnectionAsync(Options options)
         {
-            _connection = new ConnectionFactory().CreateConnection(options);
+            connection = new ConnectionFactory().CreateConnection(options);
             
-            if (_connection.State == ConnState.CONNECTED)
+            if (connection.State == ConnState.CONNECTED)
             {
-                _logger.LogInformation("Successfully reconnected to NATS server");
+                sentryClient.CaptureMessage("Successfully reconnected to NATS server");
                 return true;
             }
             
@@ -236,13 +196,13 @@ namespace ApiEventConsumer.Subscribers
         {
             var streamName = appSettings?.StreamSettings?.StreamName;
             var betMessages = appSettings?.StreamSettings?.BetMessages;
-            if (_connection == null || streamName == null || betMessages == null)
+            if (connection == null || streamName == null || betMessages == null)
             {
                 return;
             }
             
-            var jsContext = _connection.CreateJetStreamContext();
-            var jsManagement = _connection.CreateJetStreamManagementContext();
+            var jsContext = connection.CreateJetStreamContext();
+            var jsManagement = connection.CreateJetStreamManagementContext();
 
             ConfigureStream(jsManagement, streamName);
             ConfigureSubscription(jsContext, streamName, betMessages);
@@ -283,8 +243,8 @@ namespace ApiEventConsumer.Subscribers
                 .WithConfiguration(consumerConfig)
                 .Build();
 
-            _betCreatedSub = jsContext.PushSubscribeAsync(betMessages, HandleBetCreated, true, subscribeOptions);
-            _betCreatedSub.Start();
+            betCreatedSub = jsContext.PushSubscribeAsync(betMessages, HandleBetCreated, true, subscribeOptions);
+            betCreatedSub.Start();
         }
 
         public async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
@@ -362,7 +322,7 @@ namespace ApiEventConsumer.Subscribers
 
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
+            if (disposed)
             {
                 return;
             }
@@ -371,8 +331,8 @@ namespace ApiEventConsumer.Subscribers
             {
                 try
                 {
-                    _betCreatedSub?.Unsubscribe();
-                    _connection?.Dispose();
+                    betCreatedSub?.Unsubscribe();
+                    connection?.Dispose();
                 }
                 catch (Exception ex)
                 {
@@ -380,7 +340,7 @@ namespace ApiEventConsumer.Subscribers
                 }
             }
 
-            _disposed = true;
+            disposed = true;
         }
 
         public double GetHighStakeAmount()
