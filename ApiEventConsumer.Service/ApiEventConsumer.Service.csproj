@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-ApiEventConsumer.Service-35dd902f-6ff5-4b15-8b4f-d1512b75ccd2</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Coravel" Version="5.0.3" />
+	<PackageReference Include="Dapper" Version="2.1.35" />
+	<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+	<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
+	<PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+	<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+	<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
+	<PackageReference Include="MongoDB.Driver" Version="2.24.0" />
+	<PackageReference Include="NATS.Client" Version="1.1.7" />
+	<PackageReference Include="Polly" Version="8.3.1" />
+	<PackageReference Include="Sentry" Version="2.1.1" />
+	<PackageReference Include="Sentry.Extensions.Logging" Version="2.1.1" />
+	<PackageReference Include="TinyHealthCheck" Version="0.0.9" />
+	<PackageReference Include="refit" Version="7.2.22" />
+	<PackageReference Include="Refit.Newtonsoft.Json" Version="7.2.22" />
+	<PackageReference Include="UAParser" Version="3.1.47" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ApiEventConsumer.Core\ApiEventConsumer.Core.csproj" />
+    <ProjectReference Include="..\ApiEventConsumer.Database\ApiEventConsumer.Database.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.LOCAL_3.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
