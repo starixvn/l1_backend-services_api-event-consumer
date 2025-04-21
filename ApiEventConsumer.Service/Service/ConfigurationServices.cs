@@ -4,11 +4,7 @@ using ApiEventConsumer.Subscribers;
 
 namespace ApiEventConsumer.Service.Service
 {
-    public interface IConfigurationService
-    {
-    }
-
-    public class ConfigurationServices : IConfigurationService
+    public class ConfigurationServices 
     {
         public IConfiguration Configuration { get; }
         public ICacheManager Cache { get; }

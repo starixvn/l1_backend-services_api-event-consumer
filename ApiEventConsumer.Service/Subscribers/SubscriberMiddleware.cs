@@ -23,7 +23,6 @@ namespace ApiEventConsumer.Subscribers
             services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
-            services.AddSingleton<IConfigurationService>(sp => sp.GetRequiredService<ConfigurationServices>());
             services.AddHostedService<ConsumerServices>();
         }
     }
