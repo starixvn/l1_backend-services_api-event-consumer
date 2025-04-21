@@ -5,8 +5,8 @@
         public const string PortraitValue = "2";
         public const string LandscapeValue = "1";
 
-        public static readonly Role Portrait = new Role(PortraitValue, "Portrait");
-        public static readonly Role Landscape = new Role(LandscapeValue, "Landscape");
+        public static readonly ClientDisplayMode Portrait = new(PortraitValue, "Portrait");
+        public static readonly ClientDisplayMode Landscape = new (LandscapeValue, "Landscape");
 
         public ClientDisplayMode() : base("default", "Default Display Mode")
         {
