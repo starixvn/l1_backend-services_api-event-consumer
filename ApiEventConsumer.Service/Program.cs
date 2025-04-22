@@ -1,8 +1,8 @@
 using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
-using ApiEventConsumer.Subscribers;
 using MongoDB.Driver;
 using Sentry;
+using ApiEventConsumer.Service.Subscribers;
 
 namespace ApiEventConsumer
 {
