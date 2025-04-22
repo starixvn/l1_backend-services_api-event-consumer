@@ -30,12 +30,18 @@ namespace ApiEventConsumer.Service.Subscribers
         }
     }
 
-    public class MessageHandlerHostedService(
-        INatsConnectionService natsConnection,
-        ISubscriberService messageHandler) : IHostedService
+    public class MessageHandlerHostedService : IHostedService
     {
-        private readonly INatsConnectionService natsConnection = natsConnection;
-        private readonly ISubscriberService messageHandler = messageHandler;
+        private readonly INatsConnectionService natsConnection;
+        private readonly ISubscriberService messageHandler;
+
+        public MessageHandlerHostedService(
+        INatsConnectionService natsConnection,
+        ISubscriberService messageHandler)
+        {
+            this.natsConnection = natsConnection;
+            this.messageHandler = messageHandler;
+        }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {

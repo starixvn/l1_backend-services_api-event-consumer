@@ -13,15 +13,21 @@ namespace ApiEventConsumer.Service.Service
         void Disconnect();
     }
 
-    public class NatsConnectionService(
-        ISentryClient sentryClient,
-        IAppSettings appSettings) : INatsConnectionService
+    public class NatsConnectionService : INatsConnectionService
     {
-        private readonly ISentryClient sentryClient = sentryClient;
-        private readonly IAppSettings appSettings = appSettings;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
         private IConnection? connection;
         private IAsyncSubscription? subscription;
         private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
+
+        public NatsConnectionService(
+            ISentryClient sentryClient,
+            IAppSettings appSettings)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = appSettings;
+        }
 
         public void InitializeConnection()
         {
@@ -158,7 +164,10 @@ namespace ApiEventConsumer.Service.Service
                 .WithConfiguration(consumerConfig)
                 .Build();
 
-            if (connection == null) return;
+            if (connection == null)
+            {
+                return;
+            }
             var jsManagement = connection.CreateJetStreamManagementContext();
 
             async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
