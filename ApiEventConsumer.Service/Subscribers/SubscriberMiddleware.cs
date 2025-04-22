@@ -23,7 +23,38 @@ namespace ApiEventConsumer.Subscribers
             services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
-            services.AddHostedService<ConsumerServices>();
+
+            services.AddSingleton<INatsConnectionService, NatsConnectionService>();
+            
+            services.AddSingleton<ISubscriberService, SubscriberServices>();
+            services.AddHostedService<MessageHandlerHostedService>();
+        }
+    }
+
+    public class MessageHandlerHostedService : IHostedService
+    {
+        private readonly INatsConnectionService natsConnection;
+        private readonly ISubscriberService messageHandler;
+
+        public MessageHandlerHostedService(
+            INatsConnectionService natsConnection,
+            ISubscriberService messageHandler)
+        {
+            this.natsConnection = natsConnection;
+            this.messageHandler = messageHandler;
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            natsConnection.InitializeConnection();
+            natsConnection.ConfigureJetStream(((SubscriberServices)messageHandler).HandleBetCreated);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            natsConnection.Disconnect();
+            return Task.CompletedTask;
         }
     }
 }

@@ -1,0 +1,164 @@
+using ApiEventConsumer._Shared.Configurations;
+using NATS.Client;
+using NATS.Client.JetStream;
+using Polly;
+using Sentry;
+
+namespace ApiEventConsumer.Service.Service
+{
+    public interface INatsConnectionService
+    {
+        void InitializeConnection();
+        void ConfigureJetStream(EventHandler<MsgHandlerEventArgs> messageHandler);
+        void Disconnect();
+    }
+
+    public class NatsConnectionService : INatsConnectionService
+    {
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
+        private IConnection? connection;
+        private IAsyncSubscription? subscription;
+        private EventHandler<MsgHandlerEventArgs>? storedHandler;
+
+        public NatsConnectionService(
+            ISentryClient sentryClient,
+            IAppSettings appSettings)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = appSettings;
+        }
+
+        public void InitializeConnection()
+        {
+            try
+            {
+                var streamSettings = appSettings.StreamSettings;
+                if (streamSettings?.Enable != true) return;
+
+                var options = ConnectionFactory.GetDefaultOptions();
+                options.Url = streamSettings.Host;
+                options.DisconnectedEventHandler = async (_, args) =>
+                {
+                    sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
+                    await TryReconnectAsync(options);
+                };
+
+
+                connection = new ConnectionFactory().CreateConnection(options);
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                throw;
+            }
+        }
+
+        public void ConfigureJetStream(EventHandler<MsgHandlerEventArgs> messageHandler)
+        {
+            storedHandler = messageHandler;
+            var streamSettings = appSettings.StreamSettings;
+            if (connection == null || streamSettings?.StreamName == null || streamSettings.BetMessages == null) return;
+
+            var jsContext = connection.CreateJetStreamContext();
+            var jsManagement = connection.CreateJetStreamManagementContext();
+
+            ConfigureStream(jsManagement, streamSettings.StreamName);
+            ConfigureSubscription(jsContext, streamSettings.StreamName, streamSettings.BetMessages, messageHandler);
+        }
+
+        private async Task TryReconnectAsync(Options options)
+        {
+            var policy = Policy
+                .Handle<Exception>()
+                .WaitAndRetryAsync(
+                    retryCount: 5,
+                    sleepDurationProvider: retryAttempt =>
+                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    onRetry: (_, _, retryCount, _) =>
+                    {
+                        sentryClient.CaptureException(
+                            new Exception($"Reconnection attempt {retryCount} failed"));
+                    });
+
+            try
+            {
+                await policy.ExecuteAsync(async () =>
+                {
+                    if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null)
+                    {
+                        ConfigureJetStream(storedHandler);
+                        sentryClient.CaptureMessage("Successfully reconfigured JetStream after reconnection");
+                        return;
+                    }
+                    throw new InvalidOperationException("Connection attempt failed");
+                });
+            }
+            catch (Exception)
+            {
+                sentryClient.CaptureException(
+                    new Exception("Failed to reconnect to NATS server after maximum retries"));
+            }
+        }
+
+        private bool AttemptReconnectionAsync(Options options)
+        {
+            connection = new ConnectionFactory().CreateConnection(options);
+
+            if (connection.State == ConnState.CONNECTED)
+            {
+                sentryClient.CaptureMessage("Successfully reconnected to NATS server");
+                return true;
+            }
+
+            return false;
+        }
+
+
+        private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
+        {
+            var streamConfig = StreamConfiguration.Builder()
+                     .WithName(streamName)
+                     .WithSubjects($"{streamName}.*")
+                     .WithStorageType(StorageType.Memory)
+                     .WithRetentionPolicy(RetentionPolicy.WorkQueue)
+                     .Build();
+
+            try
+            {
+                var streamInfo = jsManagement.GetStreamInfo(streamName);
+                if (streamInfo == null)
+                {
+                    jsManagement.AddStream(streamConfig);
+                }
+            }
+            catch (NATSJetStreamException ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+
+        }
+
+        private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, EventHandler<MsgHandlerEventArgs> handler)
+        {
+            var consumerConfig = ConsumerConfiguration.Builder()
+                .WithAckWait(30000)
+                .WithDeliverPolicy(DeliverPolicy.New)
+                .Build();
+
+            var subscribeOptions = PushSubscribeOptions.Builder()
+                .WithStream(streamName)
+                .WithConfiguration(consumerConfig)
+                .Build();
+
+            subscription = jsContext.PushSubscribeAsync(subject, handler, true, subscribeOptions);
+            subscription.Start();
+        }
+
+        public void Disconnect()
+        {
+            subscription?.Unsubscribe();
+            connection?.Dispose();
+        }
+    }
+}
