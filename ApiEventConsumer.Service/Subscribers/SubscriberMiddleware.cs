@@ -4,8 +4,9 @@ using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Subscribers;
 
-namespace ApiEventConsumer.Subscribers
+namespace ApiEventConsumer.Service.Subscribers
 {
     public static class SubscriberMiddleware
     {
@@ -23,31 +24,23 @@ namespace ApiEventConsumer.Subscribers
             services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
-
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
-            
             services.AddSingleton<ISubscriberService, SubscriberServices>();
             services.AddHostedService<MessageHandlerHostedService>();
         }
     }
 
-    public class MessageHandlerHostedService : IHostedService
+    public class MessageHandlerHostedService(
+        INatsConnectionService natsConnection,
+        ISubscriberService messageHandler) : IHostedService
     {
-        private readonly INatsConnectionService natsConnection;
-        private readonly ISubscriberService messageHandler;
-
-        public MessageHandlerHostedService(
-            INatsConnectionService natsConnection,
-            ISubscriberService messageHandler)
-        {
-            this.natsConnection = natsConnection;
-            this.messageHandler = messageHandler;
-        }
+        private readonly INatsConnectionService natsConnection = natsConnection;
+        private readonly ISubscriberService messageHandler = messageHandler;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
             natsConnection.InitializeConnection();
-            natsConnection.ConfigureJetStream(((SubscriberServices)messageHandler).HandleBetCreated);
+            natsConnection.ConfigureJetStream(messageHandler.HandleBetCreated);
             return Task.CompletedTask;
         }
 

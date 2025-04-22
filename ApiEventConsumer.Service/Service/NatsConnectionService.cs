@@ -9,32 +9,29 @@ namespace ApiEventConsumer.Service.Service
     public interface INatsConnectionService
     {
         void InitializeConnection();
-        void ConfigureJetStream(EventHandler<MsgHandlerEventArgs> messageHandler);
+        void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler);
         void Disconnect();
     }
 
-    public class NatsConnectionService : INatsConnectionService
+    public class NatsConnectionService(
+        ISentryClient sentryClient,
+        IAppSettings appSettings) : INatsConnectionService
     {
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
         private IConnection? connection;
         private IAsyncSubscription? subscription;
-        private EventHandler<MsgHandlerEventArgs>? storedHandler;
-
-        public NatsConnectionService(
-            ISentryClient sentryClient,
-            IAppSettings appSettings)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = appSettings;
-        }
+        private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
 
         public void InitializeConnection()
         {
             try
             {
                 var streamSettings = appSettings.StreamSettings;
-                if (streamSettings?.Enable != true) return;
+                if (streamSettings?.Enable != true)
+                {
+                    return;
+                }
 
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
@@ -54,17 +51,27 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        public void ConfigureJetStream(EventHandler<MsgHandlerEventArgs> messageHandler)
+        public void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler)
         {
-            storedHandler = messageHandler;
-            var streamSettings = appSettings.StreamSettings;
-            if (connection == null || streamSettings?.StreamName == null || streamSettings.BetMessages == null) return;
+            try
+            {
+                storedHandler = messageHandler;
+                var streamSettings = appSettings.StreamSettings;
+                if (connection == null || streamSettings?.StreamName == null || streamSettings.BetMessages == null)
+                {
+                    return;
+                }
 
-            var jsContext = connection.CreateJetStreamContext();
-            var jsManagement = connection.CreateJetStreamManagementContext();
+                var jsContext = connection.CreateJetStreamContext();
+                var jsManagement = connection.CreateJetStreamManagementContext();
 
-            ConfigureStream(jsManagement, streamSettings.StreamName);
-            ConfigureSubscription(jsContext, streamSettings.StreamName, streamSettings.BetMessages, messageHandler);
+                ConfigureStream(jsManagement, streamSettings.StreamName);
+                ConfigureSubscription(jsContext, streamSettings.StreamName, streamSettings.BetMessages, messageHandler);
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
         }
 
         private async Task TryReconnectAsync(Options options)
@@ -139,7 +146,7 @@ namespace ApiEventConsumer.Service.Service
 
         }
 
-        private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, EventHandler<MsgHandlerEventArgs> handler)
+        private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
             var consumerConfig = ConsumerConfiguration.Builder()
                 .WithAckWait(30000)
@@ -151,7 +158,27 @@ namespace ApiEventConsumer.Service.Service
                 .WithConfiguration(consumerConfig)
                 .Build();
 
-            subscription = jsContext.PushSubscribeAsync(subject, handler, true, subscribeOptions);
+            if (connection == null) return;
+            var jsManagement = connection.CreateJetStreamManagementContext();
+
+            async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
+            {
+                try
+                {
+                    bool success = await handler(sender, args);
+                    if (success && args.Message.MetaData != null)
+                    {
+                        jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
+                    }
+                }
+                catch (Exception)
+                {
+                    args.Message.Nak();
+                    throw;
+                }
+            }
+
+            subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
             subscription.Start();
         }
 

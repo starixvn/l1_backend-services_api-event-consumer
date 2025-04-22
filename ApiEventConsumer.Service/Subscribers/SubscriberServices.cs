@@ -1,5 +1,4 @@
 ﻿using NATS.Client;
-using System.Text;
 using ApiEventConsumer._Shared.Configurations;
 using System.Text.Json;
 using ApiEventConsumer.Service.Subscribers;
@@ -18,6 +17,7 @@ using ApiEventConsumer.Core.Models.NatMessage;
 using Sentry.Protocol;
 using Sentry;
 using System.Globalization;
+using System.Text;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -29,30 +29,50 @@ namespace ApiEventConsumer.Subscribers
 
     public interface ISubscriberService
     {
-        void HandleBetCreated(object? sender, MsgHandlerEventArgs args);
+        Task<bool> HandleBetCreated(object? sender, MsgHandlerEventArgs args);
     }
 
-    public class SubscriberServices(
-        ISentryClient sentryClient,
-        ConfigurationServices configurations,
-        RepositoryServices repositories) : ISubscriberService
+    public class SubscriberServices : ISubscriberService
     {
-        private readonly IAppSettings appSettings = configurations.AppSettings;
-        private readonly ICacheManager cache = configurations.Cache;
-        private readonly IGenericRepository<UserSessionEntity> usersessionRepository = repositories.UserSessionRepository;
-        private readonly IGenericRepository<ExchangeRateEntity> exchangeRateRepository = repositories.ExchangeRateRepository;
-        private readonly IGenericRepository<CurrencyEntity> currencyRepository = repositories.CurrencyRepository;
-        private readonly IGenericRepository<AccountEntity> userRepository = repositories.UserRepository;
-        private readonly IGeneralGameSettingService generalGameSettingService = configurations.GeneralGameSettingService;
-        private readonly IGameUserService gameUserService = configurations.GameUserService;
-        private readonly IChatBotApi chatBotApi = configurations.ChatBotApi;
-        private readonly Parser uaParser = Parser.GetDefault();
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
+        private readonly ICacheManager cache;
+        private readonly IGenericRepository<UserSessionEntity> userSessionRepository;
+        private readonly IGenericRepository<ExchangeRateEntity> exchangeRateRepository;
+        private readonly IGenericRepository<CurrencyEntity> currencyRepository;
+        private readonly IGenericRepository<AccountEntity> userRepository;
+        private readonly IGeneralGameSettingService generalGameSettingService;
+        private readonly IGameUserService gameUserService;
+        private readonly IChatBotApi chatBotApi;
+        private readonly Parser uaParser;
 
         private const string HighStakeMessageTemplate = "{0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 
-        public async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
+        public SubscriberServices(
+            ISentryClient sentryClient,
+            ConfigurationServices configurations,
+            RepositoryServices repositories)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = configurations.AppSettings;
+            this.cache = configurations.Cache;
+            
+            this.userSessionRepository = repositories.UserSessionRepository;
+            this.exchangeRateRepository = repositories.ExchangeRateRepository;
+            this.currencyRepository = repositories.CurrencyRepository;
+            this.userRepository = repositories.UserRepository;
+            
+            this.gameUserService = configurations.GameUserService;
+            this.generalGameSettingService = configurations.GeneralGameSettingService;
+            this.chatBotApi = configurations.ChatBotApi;
+            
+            uaParser = Parser.GetDefault();
+        }
+
+
+        public async Task<bool> HandleBetCreated(object? sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -64,10 +84,12 @@ namespace ApiEventConsumer.Subscribers
                 {
                     await NotifyHighStake(betCreated, systemType);
                 }
+                return true;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                return false;
             }
         }
 
@@ -239,7 +261,7 @@ namespace ApiEventConsumer.Subscribers
                      .Include(x => x.BrowserUserAgent)
                      .Include(x => x.RecheckInTime);
 
-                var userSession = await usersessionRepository.Collection()
+                var userSession = await userSessionRepository.Collection()
                     .Find(x => x.PlayerId == playerId)
                     .Project<UserSessionEntity>(projectionUserSession)
                     .SortByDescending(x => x.RecheckInTime)

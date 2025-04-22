@@ -642,5 +642,81 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 "highstake",
                 It.Is<string>(msg => msg.Contains("Player1") && msg.Contains("5000"))));
         }
+
+        [Fact]
+        public void GetCocosVersionSuffix_WhenSystemTypeSC1_ReturnsSuffixC()
+        {
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.Cocos, new Dictionary<string, string>(), SystemType.SC1);
+
+            // Assert
+            Assert.Equal("SC", result);
+        }
+
+        [Fact]
+        public void GetCocosVersionSuffix_WhenSystemTypeNotSC1_ReturnsEmptySuffix()
+        {
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.Cocos, new Dictionary<string, string>(), SystemType.VG2);
+
+            // Assert
+            Assert.Equal("VG", result);
+        }
+
+        [Fact]
+        public void GetMegaKenoVersionSuffix_WhenSystemTypeSC1_ReturnsMK()
+        {
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.MegaKeno, new Dictionary<string, string>(), SystemType.SC1);
+
+            // Assert
+            Assert.Equal("MK", result);
+        }
+
+        [Fact]
+        public void GetMegaKenoVersionSuffix_WhenSystemTypeVG2_ReturnsVGK()
+        {
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.MegaKeno, new Dictionary<string, string>(), SystemType.VG2);
+
+            // Assert
+            Assert.Equal("VGK", result);
+        }
+
+        [Fact]
+        public void GetMegaKenoVersionSuffix_WhenSystemTypeUnknown_ReturnsEmpty()
+        {
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.MegaKeno, new Dictionary<string, string>(), "unknown");
+
+            // Assert
+            Assert.Equal("", result);
+        }
+
+        [Fact]
+        public void GetModeName_WhenModeIsPortrait_ReturnsPortraitSuffix()
+        {
+            // Arrange
+            var metadata = new Dictionary<string, string> { { "mode", ClientDisplayMode.Portrait.Value } };
+
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.Instant, metadata, SystemType.SC1);
+
+            // Assert
+            Assert.Contains(ClientDisplayMode.Portrait.DisplayName, result);
+        }
+
+        [Fact]
+        public void GetModeName_WhenModeIsNotPortrait_ReturnsEmptyString()
+        {
+            // Arrange
+            var metadata = new Dictionary<string, string> { { "mode", "Landscape" } };
+
+            // Act
+            var result = SubscriberServices.GetVersionName(Versions.Instant, metadata, SystemType.SC1);
+
+            // Assert
+            Assert.Equal("SI", result);
+        }
     }
 }
