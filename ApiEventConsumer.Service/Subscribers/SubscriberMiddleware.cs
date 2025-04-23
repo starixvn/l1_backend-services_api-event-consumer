@@ -26,6 +26,7 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<ConfigurationServices>();
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<ISubscriberService, SubscriberServices>();
+            services.AddSingleton<IHighStakeServices, HighStakeServices>();
             services.AddHostedService<MessageHandlerHostedService>();
         }
     }

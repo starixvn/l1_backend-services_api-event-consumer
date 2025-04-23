@@ -180,7 +180,7 @@ namespace ApiEventConsumer.Service.Service
                     args.Message.Ack();
                     if (success && args.Message.MetaData != null)
                     {
-                        //jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
+                        jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
                     }
                     else
                     {
