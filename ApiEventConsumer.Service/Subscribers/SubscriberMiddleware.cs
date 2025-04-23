@@ -46,7 +46,7 @@ namespace ApiEventConsumer.Service.Subscribers
         public Task StartAsync(CancellationToken cancellationToken)
         {
             natsConnection.InitializeConnection();
-            natsConnection.ConfigureJetStream(messageHandler.HandleBetCreated);
+            natsConnection.ConfigureJetStreamBetMessage(messageHandler.HandleBetCreated);
             return Task.CompletedTask;
         }
 

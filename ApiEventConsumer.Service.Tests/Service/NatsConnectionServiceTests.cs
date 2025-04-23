@@ -92,7 +92,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             connectionField?.SetValue(service, _mockConnection.Object);
 
             // Act
-            service.ConfigureJetStream(async (_, __) => await Task.FromResult(true));
+            service.ConfigureJetStreamBetMessage(async (_, __) => await Task.FromResult(true));
 
             // Assert
             _mockJsManagement.Verify(x => x.GetStreamInfo(It.IsAny<string>()), Times.Once);

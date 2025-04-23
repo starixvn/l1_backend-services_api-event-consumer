@@ -9,7 +9,7 @@ namespace ApiEventConsumer.Service.Service
     public interface INatsConnectionService
     {
         void InitializeConnection();
-        void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler);
+        void ConfigureJetStreamBetMessage(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler);
         void Disconnect();
     }
 
@@ -57,7 +57,7 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        public void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler)
+        public void ConfigureJetStreamBetMessage(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler)
         {
             try
             {
@@ -100,7 +100,7 @@ namespace ApiEventConsumer.Service.Service
                 {
                     if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null)
                     {
-                        ConfigureJetStream(storedHandler);
+                        ConfigureJetStreamBetMessage(storedHandler);
                         sentryClient.CaptureMessage("Successfully reconfigured JetStream after reconnection");
                         return;
                     }
@@ -156,7 +156,9 @@ namespace ApiEventConsumer.Service.Service
         {
             var consumerConfig = ConsumerConfiguration.Builder()
                 .WithAckWait(30000)
-                .WithDeliverPolicy(DeliverPolicy.New)
+                .WithDeliverPolicy(DeliverPolicy.All)
+                .WithIdleHeartbeat(5000)
+                .WithMaxAckPending(5)
                 .Build();
 
             var subscribeOptions = PushSubscribeOptions.Builder()
@@ -175,9 +177,14 @@ namespace ApiEventConsumer.Service.Service
                 try
                 {
                     bool success = await handler(sender, args);
+                    args.Message.Ack();
                     if (success && args.Message.MetaData != null)
                     {
-                        jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
+                        //jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
+                    }
+                    else
+                    {
+                        args.Message.Nak();
                     }
                 }
                 catch (Exception)
