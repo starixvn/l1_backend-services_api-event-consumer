@@ -5,7 +5,6 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers;
-using Sentry;
 
 namespace ApiEventConsumer.Service.Subscribers
 {

@@ -2,7 +2,6 @@ using ApiEventConsumer._Shared.Configurations;
 using NATS.Client;
 using NATS.Client.JetStream;
 using Polly;
-using Sentry;
 
 namespace ApiEventConsumer.Service.Service
 {

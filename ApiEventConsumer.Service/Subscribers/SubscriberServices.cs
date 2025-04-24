@@ -5,7 +5,6 @@ using Refit;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Core.Models.ChatBot;
 using ApiEventConsumer.Core.Models.NatMessage;
-using Sentry;
 using System.Text;
 
 namespace ApiEventConsumer.Subscribers

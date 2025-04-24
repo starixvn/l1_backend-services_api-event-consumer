@@ -9,8 +9,6 @@ using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Subscribers;
 using MongoDB.Driver;
-using Sentry.Protocol;
-using Sentry;
 using UAParser;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Core.Constants;

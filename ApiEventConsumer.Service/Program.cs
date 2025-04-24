@@ -1,7 +1,6 @@
 using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
 using MongoDB.Driver;
-using Sentry;
 using ApiEventConsumer.Service.Subscribers;
 using Sentry.OpenTelemetry;
 
