@@ -3,6 +3,7 @@ using TinyHealthCheck;
 using MongoDB.Driver;
 using Sentry;
 using ApiEventConsumer.Service.Subscribers;
+using Sentry.OpenTelemetry;
 
 namespace ApiEventConsumer
 {
@@ -22,6 +23,16 @@ namespace ApiEventConsumer
                 .ConfigureServices((hostContext, services) =>
                 {
                     var appSettings = services.AddSettings(hostContext.Configuration);
+                    var sentrySetting = hostContext.Configuration.GetSection("Sentry");
+
+                    SentrySdk.Init(options =>
+                    {
+                        options.Dsn = sentrySetting.GetValue<string>("Dsn");
+                        options.SendDefaultPii = sentrySetting.GetValue<bool>("SendDefaultPii");
+                        options.TracesSampleRate = 1.0;
+                        options.UseOpenTelemetry();
+                    });
+
                     services.AddBasicTinyHealthCheck(config =>
                     {
                         config.Port = appSettings.Port;
