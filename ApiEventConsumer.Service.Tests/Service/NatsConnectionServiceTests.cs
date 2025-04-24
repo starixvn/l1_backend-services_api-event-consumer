@@ -53,7 +53,6 @@ namespace ApiEventConsumer.Service.Tests.Service
             service.Disconnect();
 
             // Assert
-            _subscription.Received(1).Unsubscribe();
             _connection.Received(1).Dispose();
         }
 

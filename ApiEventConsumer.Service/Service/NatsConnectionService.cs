@@ -20,7 +20,7 @@ namespace ApiEventConsumer.Service.Service
         private IConnection? connection;
         private IAsyncSubscription? subscription;
         private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
-
+        private string? currentConsumerId;
         public NatsConnectionService(
             ISentryClient sentryClient,
             IAppSettings appSettings)
@@ -87,7 +87,7 @@ namespace ApiEventConsumer.Service.Service
                 .WaitAndRetryAsync(
                     retryCount: 5,
                     sleepDurationProvider: retryAttempt =>
-                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                        TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
                     onRetry: (_, _, retryCount, _) =>
                     {
                         sentryClient.CaptureException(
@@ -100,6 +100,7 @@ namespace ApiEventConsumer.Service.Service
                 {
                     if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null)
                     {
+                        CleanupOldSubscriptionAndStream();
                         ConfigureJetStreamBetMessage(storedHandler);
                         sentryClient.CaptureMessage("Successfully reconfigured JetStream after reconnection");
                         return;
@@ -114,13 +115,44 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
+        private void CleanupOldSubscriptionAndStream()
+        {
+            try
+            {
+                if (connection?.State == ConnState.CONNECTED &&
+                    !string.IsNullOrEmpty(currentConsumerId) &&
+                    !string.IsNullOrEmpty(appSettings?.StreamSettings?.StreamName))
+                {
+                    var jsManagement = connection.CreateJetStreamManagementContext();
+
+                    try
+                    {
+                        jsManagement.DeleteConsumer(
+                            appSettings.StreamSettings.StreamName,
+                            currentConsumerId);
+                    }
+                    catch (NATSJetStreamException ex)
+                    {
+                        sentryClient.CaptureMessage($"Error deleting old consumer: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(new Exception("Error cleaning up old subscription", ex));
+            }
+            finally
+            {
+                currentConsumerId = null;
+            }
+        }
+
         private bool AttemptReconnectionAsync(Options options)
         {
             connection = new ConnectionFactory().CreateConnection(options);
 
             if (connection.State == ConnState.CONNECTED)
             {
-                sentryClient.CaptureMessage("Successfully reconnected to NATS server");
                 return true;
             }
 
@@ -154,12 +186,18 @@ namespace ApiEventConsumer.Service.Service
 
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
+            currentConsumerId = $"consumer_{Guid.NewGuid():N}";
             var consumerConfig = ConsumerConfiguration.Builder()
-                .WithAckWait(30000)
-                .WithDeliverPolicy(DeliverPolicy.All)
-                .WithIdleHeartbeat(5000)
-                .WithMaxAckPending(5)
-                .Build();
+                    .WithName(currentConsumerId)
+                    .WithDurable(currentConsumerId)
+                    .WithAckWait(30000)
+                    .WithDeliverPolicy(DeliverPolicy.New)
+                    .WithIdleHeartbeat(5000)
+                    .WithMaxAckPending(5)
+                    .WithMaxDeliver(10)
+                    .WithMaxAckPending(100)
+                    .WithFilterSubject(subject)
+                    .Build();
 
             var subscribeOptions = PushSubscribeOptions.Builder()
                 .WithStream(streamName)
@@ -200,7 +238,7 @@ namespace ApiEventConsumer.Service.Service
 
         public void Disconnect()
         {
-            subscription?.Unsubscribe();
+            Task.Run(CleanupOldSubscriptionAndStream).Wait();
             connection?.Dispose();
         }
     }
