@@ -5,6 +5,7 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers;
+using Sentry;
 
 namespace ApiEventConsumer.Service.Subscribers
 {
@@ -12,6 +13,11 @@ namespace ApiEventConsumer.Service.Subscribers
     {
         public static void AddSubcriberServices(this IServiceCollection services)
         {
+            SentrySdk.ConfigureScope(scope =>
+            {
+                scope.SetTag("service_name", "ApiEventConsumer");
+            });
+            
             services.AddMemoryCache();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
