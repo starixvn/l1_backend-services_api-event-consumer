@@ -18,7 +18,6 @@ namespace ApiEventConsumer.Service.Service
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
         private IConnection? connection;
-        private IAsyncSubscription? subscription;
         private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
         private string? currentConsumerId;
         public NatsConnectionService(
@@ -232,7 +231,7 @@ namespace ApiEventConsumer.Service.Service
                 }
             }
 
-            subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
+            var subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
             subscription.Start();
         }
 
