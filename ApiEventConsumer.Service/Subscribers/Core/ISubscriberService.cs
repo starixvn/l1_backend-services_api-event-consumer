@@ -5,9 +5,6 @@ namespace ApiEventConsumer.Subscribers
 {
     public interface ISubscriberService
     {
-        // Legacy method for backward compatibility
-        Task<bool> HandleBetCreated(object sender, MsgHandlerEventArgs args);
-        
         // New methods for the updated pattern
         void RegisterSubscriber(IEventSubscriber subscriber);
         void RegisterAllSubscribers();

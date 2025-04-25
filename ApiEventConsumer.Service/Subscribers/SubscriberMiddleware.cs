@@ -61,42 +61,7 @@ namespace ApiEventConsumer.Service.Subscribers
                 
                 return manager;
             });
-
-            // Add hosted service for NATS connection management
-            services.AddHostedService<MessageHandlerHostedService>();
         }
     }
 
-    public class MessageHandlerHostedService : IHostedService
-    {
-        private readonly INatsConnectionService natsConnection;
-        private readonly ISubscriberService messageHandler;
-        private readonly IAppSettings appSettings;
-
-        public MessageHandlerHostedService(
-        INatsConnectionService natsConnection,
-        ISubscriberService messageHandler,
-            IAppSettings appSettings)
-        {
-            this.natsConnection = natsConnection;
-            this.messageHandler = messageHandler;
-            this.appSettings = appSettings;
-        }
-
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            natsConnection.InitializeConnection();
-            if (appSettings?.StreamSettings?.BetMessages != null)
-            {
-                natsConnection.ConfigureJetStream(messageHandler.HandleBetCreated, appSettings.StreamSettings.BetMessages);
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            natsConnection.Disconnect();
-            return Task.CompletedTask;
-        }
-    }
 }
