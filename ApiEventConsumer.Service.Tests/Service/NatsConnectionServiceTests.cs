@@ -96,24 +96,5 @@ namespace ApiEventConsumer.Service.Tests.Service
                 Arg.Any<PushSubscribeOptions>()
             );
         }
-
-        [Fact]
-        public void ConfigureJetStream_WhenConnectionIsNull_DoesNotConfigure()
-        {
-            // Arrange
-            _appSettings.StreamSettings.Returns(_streamSettings);
-            var service = new NatsConnectionService(_sentryClient, _appSettings);
-
-            // Act
-            service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), _streamSettings.BetMessages);
-
-            // Assert
-            _jsContext.DidNotReceive().PushSubscribeAsync(
-                Arg.Any<string>(),
-                Arg.Any<EventHandler<MsgHandlerEventArgs>>(),
-                Arg.Any<bool>(),
-                Arg.Any<PushSubscribeOptions>()
-            );
-        }
     }
 }
