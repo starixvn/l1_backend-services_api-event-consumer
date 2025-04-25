@@ -40,10 +40,13 @@ namespace ApiEventConsumer.Service.Service
 
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
+                options.AllowReconnect = true;
+                options.MaxReconnect = 3;
+                options.ReconnectWait = 2;
                 options.DisconnectedEventHandler = async (_, args) =>
                 {
                     sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-                    await TryReconnectAsync(options);
+                    //await TryReconnectAsync(options);
                 };
 
 
