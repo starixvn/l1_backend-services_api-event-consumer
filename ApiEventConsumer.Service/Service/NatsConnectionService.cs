@@ -39,7 +39,7 @@ namespace ApiEventConsumer.Service.Service
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
                 options.AllowReconnect = true;
-                options.MaxReconnect = 5;
+                options.MaxReconnect = 10;
                 options.ReconnectWait = 10000;
                 options.DisconnectedEventHandler += (_, args) =>
                 {
