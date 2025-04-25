@@ -78,7 +78,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             _appSettings.StreamSettings.Returns(_streamSettings);
             _connection.CreateJetStreamContext().Returns(_jsContext);
             _connection.CreateJetStreamManagementContext().Returns(_jsManagement);
-            
+
             var service = new NatsConnectionService(_sentryClient, _appSettings);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);

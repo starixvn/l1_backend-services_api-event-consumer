@@ -5,7 +5,13 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers;
+using ApiEventConsumer.Subscribers.Bet;
+using ApiEventConsumer.Subscribers.User;
 using ApiEventConsumer._Shared.Configurations;
+using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 
 namespace ApiEventConsumer.Service.Subscribers
 {
@@ -31,8 +37,32 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
-            services.AddSingleton<ISubscriberService, SubscriberServices>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
+
+            // Register all event subscribers
+            services.AddSingleton<BetSubscriber>();
+            services.AddSingleton<UserSubscriber>();
+
+            // Register all subscribers as IEventSubscriber for polymorphic access
+            services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSubscriber>());
+            services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<UserSubscriber>());
+
+            // Register the subscriber manager (implements ISubscriberService for backward compatibility)
+            services.AddSingleton<ISubscriberService>(provider => {
+                var natsService = provider.GetRequiredService<INatsConnectionService>();
+                var manager = new SubscriberManager(natsService);
+                
+                // Register all subscribers with the manager
+                manager.RegisterSubscriber(provider.GetRequiredService<BetSubscriber>());
+                manager.RegisterSubscriber(provider.GetRequiredService<UserSubscriber>());
+
+                // Register all subscribers to NATS
+                manager.RegisterAllSubscribers();
+                
+                return manager;
+            });
+
+            // Add hosted service for NATS connection management
             services.AddHostedService<MessageHandlerHostedService>();
         }
     }

@@ -8,26 +8,30 @@
     using ApiEventConsumer.Core.Models.NatMessage;
     using ApiEventConsumer.Service.Service;
     using ApiEventConsumer.Subscribers;
+    using ApiEventConsumer.Subscribers.Bet;
     using Microsoft.Extensions.Configuration;
     using NSubstitute;
     using NATS.Client;
     using Sentry;
     using Xunit;
 
-    public class SubscriberServiceTests
+    public class SubscriberManagerTests
     {
         private readonly ISentryClient _sentryClient;
         private readonly IAppSettings _appSettings;
         private readonly IHighStakeServices _highStakeServices;
         private readonly ConfigurationServices _configDependencies;
-        private readonly SubscriberServices _sut;
+        private readonly INatsConnectionService _natsService;
+        private readonly BetSubscriber _betSubscriber;
+        private readonly SubscriberManager _sut;
 
-        public SubscriberServiceTests()
+        public SubscriberManagerTests()
         {
             _sentryClient = Substitute.For<ISentryClient>();
             _appSettings = Substitute.For<IAppSettings>();
             _highStakeServices = Substitute.For<IHighStakeServices>();
-            
+            _natsService = Substitute.For<INatsConnectionService>();
+
             _configDependencies = new ConfigurationServices(
                 Substitute.For<IConfiguration>(),
                 Substitute.For<ICacheManager>(),
@@ -37,11 +41,14 @@
                 Substitute.For<IChatBotApi>()
             );
 
-            _sut = new SubscriberServices(
+            _betSubscriber = new BetSubscriber(
                 _sentryClient,
                 _highStakeServices,
                 _configDependencies
             );
+
+            _sut = new SubscriberManager(_natsService);
+            _sut.RegisterSubscriber(_betSubscriber);
         }
 
         [Fact]
@@ -58,7 +65,7 @@
             _appSettings.SystemType.Returns("SC1");
 
             // Act
-            var result = await _sut.HandleBetCreated(null, msgArgs);
+            var result = await _sut.HandleBetCreated(new object(), msgArgs);
 
             // Assert
             Assert.True(result);
@@ -82,12 +89,12 @@
             _appSettings.SystemType.Returns("SC1");
 
             // Act
-            var result = await _sut.HandleBetCreated(null, msgArgs);
+            var result = await _sut.HandleBetCreated(new object(), msgArgs);
 
             // Assert
             Assert.True(result);
             await _highStakeServices.DidNotReceive().NotifyHighStake(
-                Arg.Any<BetCreated>(), 
+                Arg.Any<BetCreated>(),
                 Arg.Any<string>()
             );
         }
@@ -101,7 +108,7 @@
             );
 
             // Act
-            var result = await _sut.HandleBetCreated(null, msgArgs);
+            var result = await _sut.HandleBetCreated(new object(), msgArgs);
 
             // Assert
             Assert.False(result);

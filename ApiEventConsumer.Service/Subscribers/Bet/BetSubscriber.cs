@@ -1,33 +1,23 @@
-﻿using NATS.Client;
-using ApiEventConsumer._Shared.Configurations;
-using System.Text.Json;
-using Refit;
-using ApiEventConsumer.Service.Service;
-using ApiEventConsumer.Core.Models.ChatBot;
-using ApiEventConsumer.Core.Models.NatMessage;
+using System;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Core.Models.NatMessage;
+using ApiEventConsumer.Service.Service;
+using NATS.Client;
 
-namespace ApiEventConsumer.Subscribers
+namespace ApiEventConsumer.Subscribers.Bet
 {
-    public interface IChatBotApi
-    {
-        [Post("/forwardwithtoken")]
-        Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message);
-    }
-
-    public interface ISubscriberService
-    {
-        Task<bool> HandleBetCreated(object? sender, MsgHandlerEventArgs args);
-    }
-
-    public class SubscriberServices : ISubscriberService
+    public class BetSubscriber : IEventSubscriber
     {
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
         private readonly IHighStakeServices highStakeServices;
 
+        public string SubjectName => "bet.created";
 
-        public SubscriberServices(
+        public BetSubscriber(
             ISentryClient sentryClient,
             IHighStakeServices highStakeServices,
             ConfigurationServices configurations)
@@ -37,8 +27,7 @@ namespace ApiEventConsumer.Subscribers
             this.highStakeServices = highStakeServices;
         }
 
-
-        public async Task<bool> HandleBetCreated(object? sender, MsgHandlerEventArgs args)
+        public void OnMessageReceived(object sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -48,15 +37,16 @@ namespace ApiEventConsumer.Subscribers
 
                 if (betCreated != null && (double)betCreated.Amount >= appSettings.HighStake)
                 {
-                    await highStakeServices.NotifyHighStake(betCreated, systemType);
+                    // Use Task.Run to handle async operation in void method
+                    Task.Run(async () => {
+                        await highStakeServices.NotifyHighStake(betCreated, systemType);
+                    });
                 }
-                return true;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                return false;
             }
         }
     }
-}
+} 
