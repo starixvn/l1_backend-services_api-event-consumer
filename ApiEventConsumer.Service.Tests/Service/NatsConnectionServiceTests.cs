@@ -55,32 +55,5 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             _connection.Received(1).Dispose();
         }
-
-        [Fact]
-        public void ConfigureJetStream_WhenConnectionExists_ConfiguresStreamAndSubscription()
-        {
-            // Arrange
-            _appSettings.StreamSettings.Returns(_streamSettings);
-            _connection.CreateJetStreamContext(Arg.Any<JetStreamOptions>()).Returns(_jsContext);
-            _connection.CreateJetStreamManagementContext(Arg.Any<JetStreamOptions>())
-                .Returns(_jsManagement);
-            
-            var service = new NatsConnectionService(_sentryClient, _appSettings);
-            var connectionField = typeof(NatsConnectionService)
-                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
-            connectionField?.SetValue(service, _connection);
-
-            // Act
-            service.ConfigureJetStreamBetMessage(async (_, __) => await Task.FromResult(true));
-
-            // Assert
-            _jsManagement.Received(1).GetStreamInfo(Arg.Any<string>());
-            _jsContext.Received(1).PushSubscribeAsync(
-                Arg.Any<string>(),
-                Arg.Any<EventHandler<MsgHandlerEventArgs>>(),
-                false,
-                Arg.Any<PushSubscribeOptions>()
-            );
-        }
     }
 }

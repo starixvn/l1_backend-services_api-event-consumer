@@ -17,9 +17,7 @@ namespace ApiEventConsumer.Service.Service
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
         private IConnection? connection;
-        private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
-        private string? currentConsumerId;
-        private string? currentSubject;
+        private IAsyncSubscription? subscription;
         public NatsConnectionService(
             ISentryClient sentryClient,
             IAppSettings appSettings)
@@ -41,14 +39,20 @@ namespace ApiEventConsumer.Service.Service
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
                 options.AllowReconnect = true;
-                options.MaxReconnect = 3;
-                options.ReconnectWait = 2;
-                options.DisconnectedEventHandler = async (_, args) =>
+                options.MaxReconnect = 5;
+                options.ReconnectWait = 10000;
+                options.DisconnectedEventHandler += (_, args) =>
                 {
-                    sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-                    //await TryReconnectAsync(options);
+                    sentryClient.CaptureException(new Exception("Disconnected from NATS server - attempting to reconnect"));
                 };
-
+                options.ReconnectedEventHandler += (_, args) =>
+                {
+                    sentryClient.CaptureException(new Exception("Successfully reconnected to NATS server"));
+                };
+                options.ClosedEventHandler += (_, args) =>
+                {
+                    sentryClient.CaptureException(new Exception("The NATS server connection has been closed"));
+                };
 
                 connection = new ConnectionFactory().CreateConnection(options);
             }
@@ -63,10 +67,8 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
-                storedHandler = messageHandler;
-                currentSubject = subject;
                 var streamSettings = appSettings.StreamSettings;
-                if (connection == null || streamSettings?.StreamName == null || currentSubject == null)
+                if (connection == null || streamSettings?.StreamName == null || subject == null)
                 {
                     return;
                 }
@@ -75,93 +77,13 @@ namespace ApiEventConsumer.Service.Service
                 var jsManagement = connection.CreateJetStreamManagementContext();
 
                 ConfigureStream(jsManagement, streamSettings.StreamName);
-                ConfigureSubscription(jsContext, streamSettings.StreamName, currentSubject, messageHandler);
+                ConfigureSubscription(jsContext, streamSettings.StreamName, subject, messageHandler);
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
             }
         }
-
-        private async Task TryReconnectAsync(Options options)
-        {
-            var policy = Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(
-                    retryCount: 5,
-                    sleepDurationProvider: retryAttempt =>
-                        TimeSpan.FromSeconds(Math.Pow(3, retryAttempt)),
-                    onRetry: (_, _, retryCount, _) =>
-                    {
-                        sentryClient.CaptureException(
-                            new Exception($"Reconnection attempt {retryCount} failed"));
-                    });
-
-            try
-            {
-                await policy.ExecuteAsync(async () =>
-                {
-                    if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null && currentSubject != null)
-                    {
-                        CleanupOldSubscriptionAndStream();
-                        ConfigureJetStream(storedHandler, currentSubject);
-                        sentryClient.CaptureMessage("Successfully reconfigured JetStream after reconnection");
-                        return;
-                    }
-                    throw new InvalidOperationException("Connection attempt failed");
-                });
-            }
-            catch (Exception)
-            {
-                sentryClient.CaptureException(
-                    new Exception("Failed to reconnect to NATS server after maximum retries"));
-            }
-        }
-
-        private void CleanupOldSubscriptionAndStream()
-        {
-            try
-            {
-                if (connection?.State == ConnState.CONNECTED &&
-                    !string.IsNullOrEmpty(currentConsumerId) &&
-                    !string.IsNullOrEmpty(appSettings?.StreamSettings?.StreamName))
-                {
-                    var jsManagement = connection.CreateJetStreamManagementContext();
-
-                    try
-                    {
-                        jsManagement.DeleteConsumer(
-                            appSettings.StreamSettings.StreamName,
-                            currentConsumerId);
-                    }
-                    catch (NATSJetStreamException ex)
-                    {
-                        sentryClient.CaptureMessage($"Error deleting old consumer: {ex.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(new Exception("Error cleaning up old subscription", ex));
-            }
-            finally
-            {
-                currentConsumerId = null;
-            }
-        }
-
-        private bool AttemptReconnectionAsync(Options options)
-        {
-            connection = new ConnectionFactory().CreateConnection(options);
-
-            if (connection.State == ConnState.CONNECTED)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
 
         private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
         {
@@ -189,7 +111,7 @@ namespace ApiEventConsumer.Service.Service
 
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
-            currentConsumerId = $"consumer_{Guid.NewGuid():N}";
+            var currentConsumerId = $"consumer_{Guid.NewGuid():N}";
             var consumerConfig = ConsumerConfiguration.Builder()
                     .WithName(currentConsumerId)
                     .WithDurable(currentConsumerId)
@@ -235,13 +157,13 @@ namespace ApiEventConsumer.Service.Service
                 }
             }
 
-            var subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
+            subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
             subscription.Start();
         }
 
         public void Disconnect()
         {
-            Task.Run(CleanupOldSubscriptionAndStream).Wait();
+            subscription?.Unsubscribe();
             connection?.Dispose();
         }
     }
