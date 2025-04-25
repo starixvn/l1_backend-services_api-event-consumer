@@ -8,10 +8,6 @@ namespace ApiEventConsumer.Subscribers
     {
         string SubjectName { get; }
         
-        // Handler for received messages
-        void OnMessageReceived(object sender, MsgHandlerEventArgs args);
-        
-        // No longer needed as we'll use ConfigureJetStream instead
-        // void Subscribe(IConnection connection);
+        void OnMessageReceived(object sender, MsgHandlerEventArgs args);      
     }
 } 
