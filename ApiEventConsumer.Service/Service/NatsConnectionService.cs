@@ -8,7 +8,7 @@ namespace ApiEventConsumer.Service.Service
     public interface INatsConnectionService
     {
         void InitializeConnection();
-        void ConfigureJetStreamBetMessage(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler);
+        void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler, string subject);
         void Disconnect();
     }
 
@@ -19,6 +19,7 @@ namespace ApiEventConsumer.Service.Service
         private IConnection? connection;
         private Func<object?, MsgHandlerEventArgs, Task<bool>>? storedHandler;
         private string? currentConsumerId;
+        private string? currentSubject;
         public NatsConnectionService(
             ISentryClient sentryClient,
             IAppSettings appSettings)
@@ -55,13 +56,14 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        public void ConfigureJetStreamBetMessage(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler)
+        public void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler, string subject)
         {
             try
             {
                 storedHandler = messageHandler;
+                currentSubject = subject;
                 var streamSettings = appSettings.StreamSettings;
-                if (connection == null || streamSettings?.StreamName == null || streamSettings.BetMessages == null)
+                if (connection == null || streamSettings?.StreamName == null || currentSubject == null)
                 {
                     return;
                 }
@@ -70,7 +72,7 @@ namespace ApiEventConsumer.Service.Service
                 var jsManagement = connection.CreateJetStreamManagementContext();
 
                 ConfigureStream(jsManagement, streamSettings.StreamName);
-                ConfigureSubscription(jsContext, streamSettings.StreamName, streamSettings.BetMessages, messageHandler);
+                ConfigureSubscription(jsContext, streamSettings.StreamName, currentSubject, messageHandler);
             }
             catch (Exception ex)
             {
@@ -96,10 +98,10 @@ namespace ApiEventConsumer.Service.Service
             {
                 await policy.ExecuteAsync(async () =>
                 {
-                    if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null)
+                    if (await Task.FromResult(AttemptReconnectionAsync(options)) && storedHandler != null && currentSubject != null)
                     {
                         CleanupOldSubscriptionAndStream();
-                        ConfigureJetStreamBetMessage(storedHandler);
+                        ConfigureJetStream(storedHandler, currentSubject);
                         sentryClient.CaptureMessage("Successfully reconfigured JetStream after reconnection");
                         return;
                     }

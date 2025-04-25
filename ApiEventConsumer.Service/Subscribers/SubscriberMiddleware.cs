@@ -5,6 +5,7 @@ using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers;
+using ApiEventConsumer._Shared.Configurations;
 
 namespace ApiEventConsumer.Service.Subscribers
 {
@@ -40,19 +41,25 @@ namespace ApiEventConsumer.Service.Subscribers
     {
         private readonly INatsConnectionService natsConnection;
         private readonly ISubscriberService messageHandler;
+        private readonly IAppSettings appSettings;
 
         public MessageHandlerHostedService(
         INatsConnectionService natsConnection,
-        ISubscriberService messageHandler)
+        ISubscriberService messageHandler,
+            IAppSettings appSettings)
         {
             this.natsConnection = natsConnection;
             this.messageHandler = messageHandler;
+            this.appSettings = appSettings;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
             natsConnection.InitializeConnection();
-            natsConnection.ConfigureJetStreamBetMessage(messageHandler.HandleBetCreated);
+            if (appSettings?.StreamSettings?.BetMessages != null)
+            {
+                natsConnection.ConfigureJetStream(messageHandler.HandleBetCreated, appSettings.StreamSettings.BetMessages);
+            }
             return Task.CompletedTask;
         }
 
