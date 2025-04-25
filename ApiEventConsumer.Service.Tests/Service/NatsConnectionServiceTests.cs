@@ -84,6 +84,8 @@ namespace ApiEventConsumer.Service.Tests.Service
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
             connectionField?.SetValue(service, _connection);
 
+            Assert.NotNull(_streamSettings.BetMessages);
+
             // Act
             service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), _streamSettings.BetMessages);
 
