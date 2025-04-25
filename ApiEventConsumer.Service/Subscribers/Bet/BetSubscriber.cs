@@ -1,7 +1,6 @@
 using System;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Service.Service;
@@ -15,7 +14,6 @@ namespace ApiEventConsumer.Subscribers.Bet
         private readonly IAppSettings appSettings;
         private readonly IHighStakeServices highStakeServices;
 
-        public string SubjectName => "bet.created";
 
         public BetSubscriber(
             ISentryClient sentryClient,
@@ -27,6 +25,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             this.highStakeServices = highStakeServices;
         }
 
+        public string SubjectName => appSettings?.StreamSettings?.BetMessages ?? string.Empty;
         public void OnMessageReceived(object sender, MsgHandlerEventArgs args)
         {
             try

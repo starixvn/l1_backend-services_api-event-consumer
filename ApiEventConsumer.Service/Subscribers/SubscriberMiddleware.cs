@@ -6,18 +6,12 @@ using ApiEventConsumer.Database;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
-using ApiEventConsumer.Subscribers.User;
-using ApiEventConsumer._Shared.Configurations;
-using Microsoft.Extensions.DependencyInjection;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
 
 namespace ApiEventConsumer.Service.Subscribers
 {
     public static class SubscriberMiddleware
     {
-        public static void AddSubcriberServices(this IServiceCollection services)
+        public static void AddSubscriberServices(this IServiceCollection services, IConfiguration configuration)
         {
             SentrySdk.ConfigureScope(scope =>
             {
@@ -41,26 +35,21 @@ namespace ApiEventConsumer.Service.Subscribers
 
             // Register all event subscribers
             services.AddSingleton<BetSubscriber>();
-            services.AddSingleton<UserSubscriber>();
 
             // Register all subscribers as IEventSubscriber for polymorphic access
             services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSubscriber>());
-            services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<UserSubscriber>());
 
-            // Register the subscriber manager (implements ISubscriberService for backward compatibility)
-            services.AddSingleton<ISubscriberService>(provider => {
-                var natsService = provider.GetRequiredService<INatsConnectionService>();
-                var manager = new SubscriberManager(natsService);
-                
-                // Register all subscribers with the manager
-                manager.RegisterSubscriber(provider.GetRequiredService<BetSubscriber>());
-                manager.RegisterSubscriber(provider.GetRequiredService<UserSubscriber>());
+            // Now build the provider and create the manager
+            var serviceProvider = services.BuildServiceProvider();
+            var natsService = serviceProvider.GetRequiredService<INatsConnectionService>();
+            var betSubscriber = serviceProvider.GetRequiredService<BetSubscriber>();
+            
+            var manager = new SubscriberManager(natsService);
+            manager.RegisterSubscriber(betSubscriber);
+            manager.RegisterAllSubscribers();
 
-                // Register all subscribers to NATS
-                manager.RegisterAllSubscribers();
-                
-                return manager;
-            });
+            // Register the configured manager
+            services.AddSingleton<ISubscriberService>(manager);
         }
     }
 

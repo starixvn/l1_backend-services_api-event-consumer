@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using ApiEventConsumer.Core.Models.ChatBot;
 using Refit;
 

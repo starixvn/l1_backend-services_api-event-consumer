@@ -1,9 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using NATS.Client;
-using ApiEventConsumer.Subscribers.Bet;
-using ApiEventConsumer.Subscribers.User;
 using ApiEventConsumer.Service.Service;
 
 namespace ApiEventConsumer.Subscribers
@@ -16,16 +10,14 @@ namespace ApiEventConsumer.Subscribers
         public SubscriberManager(INatsConnectionService natsService)
         {
             this.natsService = natsService;
-            subscribers = new List<IEventSubscriber>();
+            subscribers = [];
             
             natsService.InitializeConnection();
         }
 
-
         public void RegisterSubscriber(IEventSubscriber subscriber)
         {
-            subscribers.Add(subscriber);
-          
+            subscribers.Add(subscriber);          
         }
 
         public void RegisterAllSubscribers()

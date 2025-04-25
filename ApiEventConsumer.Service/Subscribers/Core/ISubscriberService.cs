@@ -1,6 +1,3 @@
-using System.Threading.Tasks;
-using NATS.Client;
-
 namespace ApiEventConsumer.Subscribers
 {
     public interface ISubscriberService

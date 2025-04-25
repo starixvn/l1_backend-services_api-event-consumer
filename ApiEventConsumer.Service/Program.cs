@@ -3,6 +3,7 @@ using TinyHealthCheck;
 using MongoDB.Driver;
 using ApiEventConsumer.Service.Subscribers;
 using Sentry.OpenTelemetry;
+using Microsoft.Extensions.Configuration;
 
 namespace ApiEventConsumer
 {
@@ -32,6 +33,15 @@ namespace ApiEventConsumer
                         options.UseOpenTelemetry();
                     });
 
+                    services.AddSingleton<ISentryClient>(sp =>
+                    {
+                        return new SentryClient(new SentryOptions
+                        {
+                            Dsn = sentrySetting.GetValue<string>("Dsn"),
+                            Environment = hostContext.Configuration["ENV"]
+                        });
+                    });
+
                     services.AddBasicTinyHealthCheck(config =>
                     {
                         config.Port = appSettings.Port;
@@ -41,9 +51,6 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    services.AddChatBotServices(appSettings);
-                    services.AddSubcriberServices();
-
                     if (appSettings.DatabaseSettings != null)
                     {
                         services.AddSingleton<IMongoClient>(sp =>
@@ -51,6 +58,8 @@ namespace ApiEventConsumer
                         services.AddSingleton<IMongoDatabase>(sp =>
                             sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
                     }
+                    services.AddChatBotServices(appSettings);
+                    services.AddSubscriberServices(hostContext.Configuration);
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {
