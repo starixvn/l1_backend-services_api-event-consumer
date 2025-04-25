@@ -5,7 +5,7 @@ namespace ApiEventConsumer.Subscribers
     public class SubscriberManager : ISubscriberService
     {
         private readonly INatsConnectionService natsService;
-        private readonly List<IEventSubscriber> subscribers = new List<IEventSubscriber>();
+        private readonly List<IEventSubscriber> subscribers;
 
         public SubscriberManager(INatsConnectionService natsService)
         {
