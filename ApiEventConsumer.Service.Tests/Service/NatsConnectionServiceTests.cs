@@ -55,5 +55,65 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             _connection.Received(1).Dispose();
         }
+
+        [Fact]
+        public void InitializeConnection_WhenStreamSettingsDisabled_DoesNotConnect()
+        {
+            // Arrange
+            _streamSettings.Enable = false;
+            _appSettings.StreamSettings.Returns(_streamSettings);
+
+            // Act
+            var service = new NatsConnectionService(_sentryClient, _appSettings);
+            service.InitializeConnection();
+
+            // Assert
+            _sentryClient.DidNotReceive().CaptureException(Arg.Any<Exception>());
+        }
+
+        [Fact]
+        public void ConfigureJetStream_WhenConnectionExists_ConfiguresStreamAndSubscription()
+        {
+            // Arrange
+            _appSettings.StreamSettings.Returns(_streamSettings);
+            _connection.CreateJetStreamContext().Returns(_jsContext);
+            _connection.CreateJetStreamManagementContext().Returns(_jsManagement);
+            
+            var service = new NatsConnectionService(_sentryClient, _appSettings);
+            var connectionField = typeof(NatsConnectionService)
+                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            connectionField?.SetValue(service, _connection);
+
+            // Act
+            service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), _streamSettings.BetMessages);
+
+            // Assert
+            _jsManagement.Received(1).GetStreamInfo(_streamSettings.StreamName);
+            _jsContext.Received(1).PushSubscribeAsync(
+                _streamSettings.BetMessages,
+                Arg.Any<EventHandler<MsgHandlerEventArgs>>(),
+                false,
+                Arg.Any<PushSubscribeOptions>()
+            );
+        }
+
+        [Fact]
+        public void ConfigureJetStream_WhenConnectionIsNull_DoesNotConfigure()
+        {
+            // Arrange
+            _appSettings.StreamSettings.Returns(_streamSettings);
+            var service = new NatsConnectionService(_sentryClient, _appSettings);
+
+            // Act
+            service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), _streamSettings.BetMessages);
+
+            // Assert
+            _jsContext.DidNotReceive().PushSubscribeAsync(
+                Arg.Any<string>(),
+                Arg.Any<EventHandler<MsgHandlerEventArgs>>(),
+                Arg.Any<bool>(),
+                Arg.Any<PushSubscribeOptions>()
+            );
+        }
     }
 }

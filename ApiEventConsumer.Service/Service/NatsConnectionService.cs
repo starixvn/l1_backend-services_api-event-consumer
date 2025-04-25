@@ -1,7 +1,6 @@
 using ApiEventConsumer._Shared.Configurations;
 using NATS.Client;
 using NATS.Client.JetStream;
-using Polly;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -30,6 +29,9 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
+                const int maxReconnect = 10;
+                const int reconnectWait = 10000;
+
                 var streamSettings = appSettings.StreamSettings;
                 if (streamSettings?.Enable != true)
                 {
@@ -39,17 +41,17 @@ namespace ApiEventConsumer.Service.Service
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
                 options.AllowReconnect = true;
-                options.MaxReconnect = 10;
-                options.ReconnectWait = 10000;
-                options.DisconnectedEventHandler += (_, args) =>
+                options.MaxReconnect = maxReconnect;
+                options.ReconnectWait = reconnectWait;
+                options.DisconnectedEventHandler += (_, _) =>
                 {
                     sentryClient.CaptureException(new Exception("Disconnected from NATS server - attempting to reconnect"));
                 };
-                options.ReconnectedEventHandler += (_, args) =>
+                options.ReconnectedEventHandler += (_, _) =>
                 {
                     sentryClient.CaptureException(new Exception("Successfully reconnected to NATS server"));
                 };
-                options.ClosedEventHandler += (_, args) =>
+                options.ClosedEventHandler += (_, _) =>
                 {
                     sentryClient.CaptureException(new Exception("The NATS server connection has been closed"));
                 };
