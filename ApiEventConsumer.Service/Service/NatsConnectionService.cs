@@ -114,48 +114,58 @@ namespace ApiEventConsumer.Service.Service
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
             var currentConsumerId = $"consumer_{Guid.NewGuid():N}";
+
             var consumerConfig = ConsumerConfiguration.Builder()
                     .WithName(currentConsumerId)
                     .WithDurable(currentConsumerId)
                     .WithAckWait(30000)
-                    .WithDeliverPolicy(DeliverPolicy.New)
-                    .WithIdleHeartbeat(5000)
-                    .WithMaxAckPending(5)
+                    .WithDeliverPolicy(DeliverPolicy.All)
+                    .WithMaxAckPending(50)
                     .WithMaxDeliver(10)
-                    .WithMaxAckPending(100)
                     .WithFilterSubject(subject)
                     .Build();
 
             var subscribeOptions = PushSubscribeOptions.Builder()
-                .WithStream(streamName)
-                .WithConfiguration(consumerConfig)
-                .Build();
+                    .WithStream(streamName)
+                    .WithConfiguration(consumerConfig)
+                    .Build();
 
             if (connection == null)
             {
                 return;
             }
-            var jsManagement = connection.CreateJetStreamManagementContext();
 
+            var jsManagement = connection.CreateJetStreamManagementContext();
             async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
             {
                 try
                 {
                     bool success = await handler(sender, args);
-                    args.Message.Ack();
-                    if (success && args.Message.MetaData != null)
+                    
+                    if (success)
                     {
-                        jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence);
+                        try
+                        {
+                            args.Message.Ack();
+                            if (args.Message.MetaData != null)
+                            {
+                                await Task.Run(() => jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence));
+                            }
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            sentryClient.CaptureException(deleteEx);
+                        }
                     }
                     else
                     {
                         args.Message.Nak();
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    sentryClient.CaptureException(ex);
                     args.Message.Nak();
-                    throw;
                 }
             }
 
