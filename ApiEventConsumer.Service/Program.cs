@@ -1,8 +1,9 @@
 using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
-using ApiEventConsumer.Subscribers;
 using MongoDB.Driver;
-using Sentry;
+using ApiEventConsumer.Service.Subscribers;
+using Sentry.OpenTelemetry;
+using Microsoft.Extensions.Configuration;
 
 namespace ApiEventConsumer
 {
@@ -22,6 +23,25 @@ namespace ApiEventConsumer
                 .ConfigureServices((hostContext, services) =>
                 {
                     var appSettings = services.AddSettings(hostContext.Configuration);
+                    var sentrySetting = hostContext.Configuration.GetSection("Sentry");
+
+                    SentrySdk.Init(options =>
+                    {
+                        options.Dsn = sentrySetting.GetValue<string>("Dsn");
+                        options.SendDefaultPii = sentrySetting.GetValue<bool>("SendDefaultPii");
+                        options.TracesSampleRate = 1.0;
+                        options.UseOpenTelemetry();
+                    });
+
+                    services.AddSingleton<ISentryClient>(sp =>
+                    {
+                        return new SentryClient(new SentryOptions
+                        {
+                            Dsn = sentrySetting.GetValue<string>("Dsn"),
+                            Environment = hostContext.Configuration["ENV"]
+                        });
+                    });
+
                     services.AddBasicTinyHealthCheck(config =>
                     {
                         config.Port = appSettings.Port;
@@ -31,9 +51,6 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    services.AddChatBotServices(appSettings);
-                    services.AddSubcriberServices();
-
                     if (appSettings.DatabaseSettings != null)
                     {
                         services.AddSingleton<IMongoClient>(sp =>
@@ -41,6 +58,8 @@ namespace ApiEventConsumer
                         services.AddSingleton<IMongoDatabase>(sp =>
                             sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
                     }
+                    services.AddChatBotServices(appSettings);
+                    services.AddSubscriberServices(hostContext.Configuration);
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {

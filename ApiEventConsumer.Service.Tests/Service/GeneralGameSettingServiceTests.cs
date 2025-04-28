@@ -1,19 +1,18 @@
-﻿using Moq;
-using FluentAssertions;
+﻿using FluentAssertions;
 using ApiEventConsumer.Service.Service;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
+using NSubstitute;
 
 namespace ApiEventConsumer.Service.Tests.Service
 {
     public class GeneralGameSettingServiceTests
     {
-        private readonly Mock<IGenericRepository<GameConfigEntity>> _mockRepository;
+        private readonly IGenericRepository<GameConfigEntity> _repository;
 
         public GeneralGameSettingServiceTests()
         {
-            _mockRepository = new Mock<IGenericRepository<GameConfigEntity>>();
-
+            _repository = Substitute.For<IGenericRepository<GameConfigEntity>>();
         }
 
         [Fact]
@@ -61,8 +60,7 @@ namespace ApiEventConsumer.Service.Tests.Service
                 new GameConfigEntity { GameId = 3, DisplayName = "Game 3" }
             }.AsQueryable();
 
-            _mockRepository.Setup(x => x.AsQueryable())
-                          .Returns(configs);
+            _repository.AsQueryable().Returns(configs);
 
             var service = CreateService();
 
@@ -141,7 +139,7 @@ namespace ApiEventConsumer.Service.Tests.Service
                 }
             }.AsQueryable();
 
-            _mockRepository.Setup(x => x.AsQueryable()).Returns(configs);
+            _repository.AsQueryable().Returns(configs);
             var service = CreateService();
 
             // Act
@@ -151,12 +149,9 @@ namespace ApiEventConsumer.Service.Tests.Service
             result.Should().Be("GameName");
         }
 
-
         private GeneralGameSettingServices CreateService()
         {
-            return new GeneralGameSettingServices(
-                _mockRepository.Object
-            );
+            return new GeneralGameSettingServices(_repository);
         }
 
         private void SetupLocalGameConfig(int gameId, string? displayName = null, string? name = null)
@@ -171,7 +166,7 @@ namespace ApiEventConsumer.Service.Tests.Service
                 }
             }.AsQueryable();
 
-            _mockRepository.Setup(x => x.AsQueryable()).Returns(configs);
+            _repository.AsQueryable().Returns(configs);
         }
     }
 

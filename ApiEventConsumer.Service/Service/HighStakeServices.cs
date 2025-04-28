@@ -1,281 +1,63 @@
-﻿using NATS.Client;
-using System.Text;
+﻿using System.Globalization;
 using ApiEventConsumer._Shared.Configurations;
-using System.Text.Json;
-using ApiEventConsumer.Service.Subscribers;
-using Refit;
-using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Api._Shared.Helpers;
-using ApiEventConsumer.Database;
-using ApiEventConsumer.Database.Entities.Currencies;
-using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Core.Enumeration;
-using ApiEventConsumer.Service.Service;
-using UAParser;
-using MongoDB.Driver;
 using ApiEventConsumer.Core.Models.ChatBot;
 using ApiEventConsumer.Core.Models.NatMessage;
-using Sentry.Protocol;
-using Sentry;
-using NATS.Client.JetStream;
-using System.Globalization;
-using Polly;
+using ApiEventConsumer.Database.Entities.Currencies;
+using ApiEventConsumer.Database.Entities.ExchangeRates;
+using ApiEventConsumer.Database.Entities;
+using ApiEventConsumer.Subscribers;
+using MongoDB.Driver;
+using UAParser;
+using ApiEventConsumer.Database;
+using ApiEventConsumer.Core.Constants;
 
-namespace ApiEventConsumer.Subscribers
+namespace ApiEventConsumer.Service.Service
 {
-    public interface IChatBotApi
+    public interface IHighStakeServices
     {
-        [Post("/forwardwithtoken")]
-        Task<ChatBotResult> ForwardMessage(string token, string conversationId, string message);
+        Task<ChatBotResult> NotifyHighStake(BetCreated bet, string systemType);
     }
 
-    public interface ISubscriberService
+    public class HighStakeServices: IHighStakeServices
     {
-        void InitializeNatsConnection();
-    }
-
-    public class SubscriberServices : ISubscriberService, IHostedService, IDisposable
-    {
-        protected readonly ISentryClient sentryClient;
-        protected readonly IConfiguration configuration;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
         private readonly ICacheManager cache;
-        private readonly IGenericRepository<UserSessionEntity> usersessionRepository;
+        private readonly IGenericRepository<UserSessionEntity> userSessionRepository;
         private readonly IGenericRepository<ExchangeRateEntity> exchangeRateRepository;
         private readonly IGenericRepository<CurrencyEntity> currencyRepository;
         private readonly IGenericRepository<AccountEntity> userRepository;
+        private readonly IGeneralGameSettingService generalGameSettingService;
+        private readonly IGameUserService gameUserService;
+        private readonly IChatBotApi chatBotApi;
         private readonly Parser uaParser;
-
-        private IConnection? connection;
-        private IAsyncSubscription? betCreatedSub;
 
         private const string HighStakeMessageTemplate = "{0} - {1} - {2} - {3} - {4} {5}";
         private const double DefaultHighStakeAmount = 2000;
         private const int CacheExpireInMinutes = 60 * 24;
 
-        private readonly IAppSettings appSettings;
-        private readonly IGeneralGameSettingService generalGameSettingService;
-        private readonly IGameUserService gameUserService;
-        private readonly IChatBotApi chatBotApi;
-
-        private bool disposed;
-
-
-        public class ServiceDependencies
-        {
-            public IGameUserService GameUserService { get; }
-            public IGeneralGameSettingService GeneralGameSettingService { get; }
-            public IChatBotApi ChatBotApi { get; }
-
-            public ServiceDependencies(
-                IGameUserService gameUserService,
-                IGeneralGameSettingService generalGameSettingService,
-                IChatBotApi chatBotApi)
-            {
-                GameUserService = gameUserService;
-                GeneralGameSettingService = generalGameSettingService;
-                ChatBotApi = chatBotApi;
-            }
-        }
-
-        protected SubscriberServices(
+        public HighStakeServices(
             ISentryClient sentryClient,
             ConfigurationServices configurations,
             RepositoryServices repositories)
         {
             this.sentryClient = sentryClient;
-            configuration = configurations.Configuration;
             this.appSettings = configurations.AppSettings;
             this.cache = configurations.Cache;
-            
-            this.usersessionRepository = repositories.UserSessionRepository;
+
+            this.userSessionRepository = repositories.UserSessionRepository;
             this.exchangeRateRepository = repositories.ExchangeRateRepository;
             this.currencyRepository = repositories.CurrencyRepository;
             this.userRepository = repositories.UserRepository;
-            
+
             this.gameUserService = configurations.GameUserService;
             this.generalGameSettingService = configurations.GeneralGameSettingService;
             this.chatBotApi = configurations.ChatBotApi;
-            
+
             uaParser = Parser.GetDefault();
         }
-
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            InitializeNatsConnection();
-            await Task.CompletedTask;
-        }
-
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            Dispose();
-            await Task.CompletedTask;
-        }
-
-        public void InitializeNatsConnection()
-        {
-            try
-            {
-                var streamSettings = appSettings.StreamSettings;
-                if (streamSettings?.Enable != true)
-                {
-                    return;
-                }
-
-                ConnectToNats(streamSettings);
-                ConfigureJetStream();
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(new Exception($"Critical error in NATS initialization: {ex}"));
-            }
-        }
-
-        private void ConnectToNats(StreamSettings streamSettings)
-        {
-            var options = ConnectionFactory.GetDefaultOptions();
-            options.Url = streamSettings.Host;
-            
-            ConfigureDisconnectHandler(options);
-            
-            connection = new ConnectionFactory().CreateConnection(options);
-            
-            if (connection.State != ConnState.CONNECTED)
-            {
-                throw new InvalidOperationException($"Failed to connect to NATS server. State: {connection.State}");
-            }
-        }
-
-        private void ConfigureDisconnectHandler(Options options)
-        {
-            options.DisconnectedEventHandler = async (_, args) =>
-            {
-                sentryClient.CaptureException(new Exception($"Disconnected from NATS server: {args.Error}"));
-                sentryClient.CaptureMessage("NATS connection lost. Attempting to reconnect...");
-                await TryReconnectAsync(options);
-            };
-        }
-
-        private async Task TryReconnectAsync(Options options)
-        {
-            var policy = Policy
-                .Handle<Exception>()
-                .WaitAndRetryAsync(
-                    retryCount: 5,
-                    sleepDurationProvider: retryAttempt => 
-                        TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                    onRetry: (_, _, retryCount, _) =>
-                    {
-                        sentryClient.CaptureException(
-                            new Exception($"Reconnection attempt {retryCount} failed"));
-                    });
-
-            try 
-            {
-                await policy.ExecuteAsync(async () =>
-                {
-                    if (await Task.FromResult(AttemptReconnectionAsync(options)))
-                    {
-                        ConfigureJetStream();
-                        return;
-                    }
-                    throw new InvalidOperationException("Connection attempt failed");
-                });
-            }
-            catch (Exception)
-            {
-                sentryClient.CaptureException(
-                    new Exception("Failed to reconnect to NATS server after maximum retries"));
-            }
-        }
-
-        private bool AttemptReconnectionAsync(Options options)
-        {
-            connection = new ConnectionFactory().CreateConnection(options);
-            
-            if (connection.State == ConnState.CONNECTED)
-            {
-                sentryClient.CaptureMessage("Successfully reconnected to NATS server");
-                return true;
-            }
-            
-            return false;
-        }
-
-        private void ConfigureJetStream()
-        {
-            var streamName = appSettings?.StreamSettings?.StreamName;
-            var betMessages = appSettings?.StreamSettings?.BetMessages;
-            if (connection == null || streamName == null || betMessages == null)
-            {
-                return;
-            }
-            
-            var jsContext = connection.CreateJetStreamContext();
-            var jsManagement = connection.CreateJetStreamManagementContext();
-
-            ConfigureStream(jsManagement, streamName);
-            ConfigureSubscription(jsContext, streamName, betMessages);
-        }
-
-        public void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
-        {
-            var streamConfig = StreamConfiguration.Builder()
-                .WithName(streamName)
-                .WithSubjects($"{streamName}.*")
-                .WithStorageType(StorageType.Memory)
-                .WithRetentionPolicy(RetentionPolicy.WorkQueue)
-                .Build();
-
-            try
-            {
-                var streamInfo = jsManagement.GetStreamInfo(streamName);
-                if (streamInfo == null)
-                {
-                    jsManagement.AddStream(streamConfig);
-                }
-            }
-            catch (NATSJetStreamException ex)
-            {
-                sentryClient.CaptureException(ex);
-            }
-        }
-
-        private void ConfigureSubscription(IJetStream jsContext, string streamName, string betMessages)
-        {
-            var consumerConfig = ConsumerConfiguration.Builder()
-                .WithAckWait(30000)
-                .WithDeliverPolicy(DeliverPolicy.New)
-                .Build();
-
-            var subscribeOptions = PushSubscribeOptions.Builder()
-                .WithStream(streamName)
-                .WithConfiguration(consumerConfig)
-                .Build();
-
-            betCreatedSub = jsContext.PushSubscribeAsync(betMessages, HandleBetCreated, true, subscribeOptions);
-            betCreatedSub.Start();
-        }
-
-        public async void HandleBetCreated(object? sender, MsgHandlerEventArgs args)
-        {
-            try
-            {
-                var message = Encoding.UTF8.GetString(args.Message.Data);
-                var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
-                var systemType = appSettings.SystemType ?? string.Empty;
-
-                if (betCreated != null && (double)betCreated.Amount >= appSettings.HighStake)
-                {
-                    await NotifyHighStake(betCreated, systemType);
-                }
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(new Exception($"Error processing bet.created message: {ex}"));
-            }
-        }
-
-
         public async Task<ChatBotResult> NotifyHighStake(BetCreated bet, string systemType)
         {
             try
@@ -320,36 +102,7 @@ namespace ApiEventConsumer.Subscribers
             return chatBotApi.ForwardMessage(
                 appSettings.ChatBotApiSettings?.Token ?? string.Empty,
                 appSettings.ChatBotApiSettings?.ConversationIds?.HighStake ?? string.Empty,
-                message);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                try
-                {
-                    betCreatedSub?.Unsubscribe();
-                    connection?.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    sentryClient.CaptureException(new Exception($"Error disposing NATS connections: {ex}"));
-                }
-            }
-
-            disposed = true;
+            message);
         }
 
         public double GetHighStakeAmount()
@@ -376,10 +129,10 @@ namespace ApiEventConsumer.Subscribers
             var exchangeRate = GetExchangeRate();
             var currencies = GetCurrencies();
             var user = await GetUser(bet.PlayerId?.ToString() ?? string.Empty, bet.OperatorId ?? string.Empty);
-            
-            var currency = currencies?.FirstOrDefault(c => 
-                c.Enabled && 
-                c.Name == bet.Currency && 
+
+            var currency = currencies?.FirstOrDefault(c =>
+                c.Enabled &&
+                c.Name == bet.Currency &&
                 c.PartnerId == user?.OperatorId);
 
             return (currency, exchangeRate);
@@ -448,7 +201,7 @@ namespace ApiEventConsumer.Subscribers
 
         private static string GetCocosVersionSuffix(string systemType)
         {
-            return systemType == SystemType.SC1 ? "C" 
+            return systemType == SystemType.SC1 ? "C"
                  : string.Empty;
         }
 
@@ -468,12 +221,12 @@ namespace ApiEventConsumer.Subscribers
             try
             {
                 var projectionUserSession = Builders<UserSessionEntity>.Projection
-                     .Include(x => x.PlayerId)
-                     .Include(x => x.Ip)
+                .Include(x => x.PlayerId)
+                .Include(x => x.Ip)
                      .Include(x => x.BrowserUserAgent)
-                     .Include(x => x.RecheckInTime);
+                .Include(x => x.RecheckInTime);
 
-                var userSession = await usersessionRepository.Collection()
+                var userSession = await userSessionRepository.Collection()
                     .Find(x => x.PlayerId == playerId)
                     .Project<UserSessionEntity>(projectionUserSession)
                     .SortByDescending(x => x.RecheckInTime)
@@ -503,7 +256,7 @@ namespace ApiEventConsumer.Subscribers
                     .SortByDescending(x => x.ExId)
                     .FirstOrDefault() ?? new ExchangeRateEntity();
 
-                if (exchangeRate.ExId != 0) 
+                if (exchangeRate.ExId != 0)
                 {
                     cache.SetCache(CachedKeys.ExchangeRate.ToString(), exchangeRate, CacheExpireInMinutes);
                 }

@@ -18,8 +18,9 @@
 	<PackageReference Include="MongoDB.Driver" Version="2.24.0" />
 	<PackageReference Include="NATS.Client" Version="1.1.7" />
 	<PackageReference Include="Polly" Version="8.3.1" />
-	<PackageReference Include="Sentry" Version="2.1.1" />
-	<PackageReference Include="Sentry.Extensions.Logging" Version="2.1.1" />
+	<PackageReference Include="Sentry" Version="5.5.1" />
+	<PackageReference Include="Sentry.Extensions.Logging" Version="5.5.1" />
+	<PackageReference Include="Sentry.OpenTelemetry" Version="5.5.1" />
 	<PackageReference Include="TinyHealthCheck" Version="0.0.9" />
 	<PackageReference Include="refit" Version="7.2.22" />
 	<PackageReference Include="Refit.Newtonsoft.Json" Version="7.2.22" />

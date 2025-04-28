@@ -1,8 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Driver;
-using Moq;
 using System.Linq.Expressions;
-using Xunit;
+using NSubstitute;
 
 namespace ApiEventConsumer.Database.Tests
 {
@@ -13,13 +12,13 @@ namespace ApiEventConsumer.Database.Tests
 
     public class IGenericRepositoryTests
     {
-        private readonly Mock<IGenericRepository<GenericTestDocument>> _mockRepository;
+        private readonly IGenericRepository<GenericTestDocument> _repository;
         private readonly GenericTestDocument _testDocument;
         private readonly List<GenericTestDocument> _testDocuments;
 
         public IGenericRepositoryTests()
         {
-            _mockRepository = new Mock<IGenericRepository<GenericTestDocument>>();
+            _repository = Substitute.For<IGenericRepository<GenericTestDocument>>();
             
             _testDocument = new GenericTestDocument 
             { 
@@ -39,11 +38,10 @@ namespace ApiEventConsumer.Database.Tests
         public void AsQueryable_ShouldReturnQueryable()
         {
             // Arrange
-            _mockRepository.Setup(x => x.AsQueryable())
-                .Returns(_testDocuments.AsQueryable());
+            _repository.AsQueryable().Returns(_testDocuments.AsQueryable());
 
             // Act
-            var result = _mockRepository.Object.AsQueryable();
+            var result = _repository.AsQueryable();
 
             // Assert
             Assert.NotNull(result);
@@ -55,11 +53,10 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             Expression<Func<GenericTestDocument, bool>> filter = x => x.Name == "Doc 1";
-            _mockRepository.Setup(x => x.FilterBy(filter))
-                .Returns(_testDocuments.Where(x => x.Name == "Doc 1"));
+            _repository.FilterBy(filter).Returns(_testDocuments.Where(x => x.Name == "Doc 1"));
 
             // Act
-            var result = _mockRepository.Object.FilterBy(filter);
+            var result = _repository.FilterBy(filter);
 
             // Assert
             Assert.Single(result);
@@ -71,11 +68,10 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             Expression<Func<GenericTestDocument, bool>> filter = x => x.Name == "Doc 1";
-            _mockRepository.Setup(x => x.FilterByAsync(filter))
-                .ReturnsAsync(_testDocuments.Where(x => x.Name == "Doc 1"));
+            _repository.FilterByAsync(filter).Returns(_testDocuments.Where(x => x.Name == "Doc 1"));
 
             // Act
-            var result = await _mockRepository.Object.FilterByAsync(filter);
+            var result = await _repository.FilterByAsync(filter);
 
             // Assert
             Assert.Single(result);
@@ -87,11 +83,10 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             Expression<Func<GenericTestDocument, bool>> filter = x => x.Name == "Test Document";
-            _mockRepository.Setup(x => x.FindOne(filter))
-                .Returns(_testDocument);
+            _repository.FindOne(filter).Returns(_testDocument);
 
             // Act
-            var result = _mockRepository.Object.FindOne(filter);
+            var result = _repository.FindOne(filter);
 
             // Assert
             Assert.NotNull(result);
@@ -103,11 +98,10 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             Expression<Func<GenericTestDocument, bool>> filter = x => x.Name == "Test Document";
-            _mockRepository.Setup(x => x.FindOneAsync(filter))
-                .ReturnsAsync(_testDocument);
+            _repository.FindOneAsync(filter).Returns(_testDocument);
 
             // Act
-            var result = await _mockRepository.Object.FindOneAsync(filter);
+            var result = await _repository.FindOneAsync(filter);
 
             // Assert
             Assert.NotNull(result);
@@ -119,11 +113,10 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             var id = _testDocument.Id.ToString();
-            _mockRepository.Setup(x => x.FindById(id))
-                .Returns(_testDocument);
+            _repository.FindById(id).Returns(_testDocument);
 
             // Act
-            var result = _mockRepository.Object.FindById(id);
+            var result = _repository.FindById(id);
 
             // Assert
             Assert.NotNull(result);
@@ -133,25 +126,21 @@ namespace ApiEventConsumer.Database.Tests
         [Fact]
         public async Task InsertOneAsync_ShouldInsertDocument()
         {
-            // Arrange
-            _mockRepository.Setup(x => x.InsertOneAsync(_testDocument))
-                .Returns(Task.CompletedTask);
+            // Act
+            await _repository.InsertOneAsync(_testDocument);
 
-            // Act & Assert
-            await _mockRepository.Object.InsertOneAsync(_testDocument);
-            _mockRepository.Verify(x => x.InsertOneAsync(_testDocument), Times.Once);
+            // Assert
+            await _repository.Received(1).InsertOneAsync(_testDocument);
         }
 
         [Fact]
         public async Task InsertManyAsync_ShouldInsertMultipleDocuments()
         {
-            // Arrange
-            _mockRepository.Setup(x => x.InsertManyAsync(_testDocuments))
-                .Returns(Task.CompletedTask);
+            // Act
+            await _repository.InsertManyAsync(_testDocuments);
 
-            // Act & Assert
-            await _mockRepository.Object.InsertManyAsync(_testDocuments);
-            _mockRepository.Verify(x => x.InsertManyAsync(_testDocuments), Times.Once);
+            // Assert
+            await _repository.Received(1).InsertManyAsync(_testDocuments);
         }
 
         [Fact]
@@ -159,12 +148,12 @@ namespace ApiEventConsumer.Database.Tests
         {
             // Arrange
             Expression<Func<GenericTestDocument, bool>> filter = x => x.Name == "Test Document";
-            _mockRepository.Setup(x => x.DeleteOneAsync(filter))
-                .Returns(Task.CompletedTask);
 
-            // Act & Assert
-            await _mockRepository.Object.DeleteOneAsync(filter);
-            _mockRepository.Verify(x => x.DeleteOneAsync(filter), Times.Once);
+            // Act
+            await _repository.DeleteOneAsync(filter);
+
+            // Assert
+            await _repository.Received(1).DeleteOneAsync(filter);
         }
 
         [Fact]
@@ -175,24 +164,22 @@ namespace ApiEventConsumer.Database.Tests
             var update = Builders<GenericTestDocument>.Update.Set(x => x.Name, "Updated Name");
             var options = new UpdateOptions();
 
-            _mockRepository.Setup(x => x.UpdateAsync(filter, update, options))
-                .Returns(Task.CompletedTask);
+            // Act
+            await _repository.UpdateAsync(filter, update, options);
 
-            // Act & Assert
-            await _mockRepository.Object.UpdateAsync(filter, update, options);
-            _mockRepository.Verify(x => x.UpdateAsync(filter, update, options), Times.Once);
+            // Assert
+            await _repository.Received(1).UpdateAsync(filter, update, options);
         }
 
         [Fact]
         public void Collection_ShouldReturnMongoCollection()
         {
             // Arrange
-            var mockCollection = new Mock<IMongoCollection<GenericTestDocument>>();
-            _mockRepository.Setup(x => x.Collection())
-                .Returns(mockCollection.Object);
+            var mockCollection = Substitute.For<IMongoCollection<GenericTestDocument>>();
+            _repository.Collection().Returns(mockCollection);
 
             // Act
-            var result = _mockRepository.Object.Collection();
+            var result = _repository.Collection();
 
             // Assert
             Assert.NotNull(result);
@@ -203,12 +190,11 @@ namespace ApiEventConsumer.Database.Tests
         public void Aggregate_ShouldReturnAggregateFluent()
         {
             // Arrange
-            var mockAggregate = new Mock<IAggregateFluent<GenericTestDocument>>();
-            _mockRepository.Setup(x => x.Aggregate())
-                .Returns(mockAggregate.Object);
+            var aggregateFluent = Substitute.For<IAggregateFluent<GenericTestDocument>>();
+            _repository.Aggregate().Returns(aggregateFluent);
 
             // Act
-            var result = _mockRepository.Object.Aggregate();
+            var result = _repository.Aggregate();
 
             // Assert
             Assert.NotNull(result);
