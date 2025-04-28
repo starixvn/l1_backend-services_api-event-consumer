@@ -138,29 +138,22 @@ namespace ApiEventConsumer.Service.Service
             var jsManagement = connection.CreateJetStreamManagementContext();
             async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
             {
+                if (args.Message.MetaData == null)
+                {
+                    args.Message.Nak();
+                    return;
+                }
+
                 try
                 {
                     bool success = await handler(sender, args);
-                    
-                    if (success)
-                    {
-                        try
-                        {
-                            args.Message.Ack();
-                            if (args.Message.MetaData != null)
-                            {
-                                await Task.Run(() => jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence));
-                            }
-                        }
-                        catch (Exception deleteEx)
-                        {
-                            sentryClient.CaptureException(deleteEx);
-                        }
-                    }
-                    else
+                    if (!success)
                     {
                         args.Message.Nak();
+                        return;
                     }
+
+                    await ProcessSuccessfulMessage(args, streamName, jsManagement);
                 }
                 catch (Exception ex)
                 {
@@ -171,6 +164,19 @@ namespace ApiEventConsumer.Service.Service
 
             subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
             subscription.Start();
+        }
+
+        private async Task ProcessSuccessfulMessage(MsgHandlerEventArgs args, string streamName, IJetStreamManagement jsManagement)
+        {
+            try
+            {
+                args.Message.Ack();
+                await Task.Run(() => jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence));
+            }
+            catch (Exception deleteEx)
+            {
+                sentryClient.CaptureException(deleteEx);
+            }
         }
 
         public void Disconnect()
