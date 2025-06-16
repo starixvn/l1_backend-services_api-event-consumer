@@ -8,6 +8,7 @@ namespace ApiEventConsumer.Core.Enumeration
         MegaKeno,
         App,
         Livepage,
-        MobileDirect
+        MobileDirect,
+        TodayPage
     }
 }

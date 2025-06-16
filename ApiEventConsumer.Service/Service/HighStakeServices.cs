@@ -172,6 +172,7 @@ namespace ApiEventConsumer.Service.Service
                 Versions.App => $"{systemPrefix}A",
                 Versions.Livepage => $"{systemPrefix}L",
                 Versions.MobileDirect => $"{systemPrefix}D",
+                Versions.TodayPage => $"{systemPrefix}T",
                 _ => string.Empty,
             };
         }
