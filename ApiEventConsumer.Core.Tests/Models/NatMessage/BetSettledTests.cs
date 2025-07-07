@@ -18,12 +18,12 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Equal(0m, betSettled.ValidBetAmount);
             Assert.Null(betSettled.EndTime);
             Assert.False(betSettled.FreeBet);
-            Assert.Null(betSettled.PromotionId);
-            Assert.Null(betSettled.Seq);
-            Assert.Null(betSettled.PlayerId);
-            Assert.Null(betSettled.SiteId);
-            Assert.Null(betSettled.OperatorId);
-            Assert.Null(betSettled.SiteName);
+            Assert.Equal(string.Empty, betSettled.PromotionId);
+            Assert.Equal(string.Empty, betSettled.Seq);
+            Assert.Equal(string.Empty, betSettled.PlayerId);
+            Assert.Equal(string.Empty, betSettled.SiteId);
+            Assert.Equal(string.Empty, betSettled.OperatorId);
+            Assert.Equal(string.Empty, betSettled.SiteName);
             Assert.Equal(default, betSettled.TimeStamp);
         }
 

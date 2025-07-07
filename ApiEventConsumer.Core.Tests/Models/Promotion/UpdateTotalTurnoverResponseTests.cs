@@ -13,8 +13,8 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
             Assert.False(response.Success);
             Assert.Equal(0m, response.TotalTurnover);
             Assert.Equal(0m, response.RemainingTO);
-            Assert.Null(response.Code);
-            Assert.Null(response.Message);
+            Assert.Equal(string.Empty, response.Code);
+            Assert.Equal(string.Empty, response.Message);
         }
 
         [Fact]
