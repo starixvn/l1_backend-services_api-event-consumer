@@ -5,6 +5,7 @@
         public int Port { get; set; }
         public string? SystemType { get; set; }
         public double HighStake { get; set; }
+        public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
@@ -15,6 +16,7 @@
         public int Port { get; set; }
         public string? SystemType { get; set; }
         public double HighStake { get; set; }
+        public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
@@ -39,6 +41,18 @@
     public class ConversationIds
     {
         public string? HighStake { get; set; }
+    }
+
+    public class PromotionApiSettings
+    {
+        public string? BaseUrl { get; set; }
+        public PromotionEndpoints? Endpoints { get; set; }
+    }
+
+    public class PromotionEndpoints
+    {
+        public string UpdateTotalTurnover { get; set; } = "/bonus-wins/update-total-turnover";
+        public string HasBonusWin { get; set; } = "/bonus-wins/has-bonus-win";
     }
 
     public class DatabaseSettings

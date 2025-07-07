@@ -32,6 +32,8 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<ConfigurationServices>();
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
+            services.AddHttpClient();
+            services.AddSingleton<IPromotionService, PromotionService>();
 
             // Register all event subscribers
             services.AddSingleton<BetSubscriber>();

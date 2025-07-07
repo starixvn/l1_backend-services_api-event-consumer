@@ -22,6 +22,8 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Null(betSettled.Seq);
             Assert.Null(betSettled.PlayerId);
             Assert.Null(betSettled.SiteId);
+            Assert.Null(betSettled.OperatorId);
+            Assert.Null(betSettled.SiteName);
             Assert.Equal(default, betSettled.TimeStamp);
         }
 
@@ -44,7 +46,9 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
                 PromotionId = "promo_123",
                 Seq = "seq_123",
                 PlayerId = 456,
-                SiteId = "site_123"
+                SiteId = "site_123",
+                OperatorId = "op_123",
+                SiteName = "site_name_123"
             };
 
             // Assert
@@ -59,6 +63,8 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Equal("seq_123", betSettled.Seq);
             Assert.Equal(456, betSettled.PlayerId);
             Assert.Equal("site_123", betSettled.SiteId);
+            Assert.Equal("op_123", betSettled.OperatorId);
+            Assert.Equal("site_name_123", betSettled.SiteName);
         }
 
         [Theory]
@@ -165,6 +171,38 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
 
             // Assert
             Assert.Equal(siteId, betSettled.SiteId);
+        }
+
+        [Theory]
+        [InlineData("op_123")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void OperatorId_ShouldHandleValidValues(string operatorId)
+        {
+            // Arrange
+            var betSettled = new BetSettled
+            {
+                OperatorId = operatorId
+            };
+
+            // Assert
+            Assert.Equal(operatorId, betSettled.OperatorId);
+        }
+
+        [Theory]
+        [InlineData("site_name_123")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void SiteName_ShouldHandleValidValues(string siteName)
+        {
+            // Arrange
+            var betSettled = new BetSettled
+            {
+                SiteName = siteName
+            };
+
+            // Assert
+            Assert.Equal(siteName, betSettled.SiteName);
         }
     }
 } 

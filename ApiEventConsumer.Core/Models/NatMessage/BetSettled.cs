@@ -13,6 +13,8 @@ namespace ApiEventConsumer.Core.Models.NatMessage
         public string Seq { get; set; }
         public object PlayerId { get; set; }
         public string SiteId { get; set; }
+        public string OperatorId { get; set; }
+        public string SiteName { get; set; }
         public DateTimeOffset TimeStamp { get; }
     }
 }

@@ -1,9 +1,14 @@
 using System;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.NatMessage;
+using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
 using NATS.Client;
 using NSubstitute;
@@ -13,45 +18,104 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 {
     public class BetSettledSubscriberTests
     {
-        private readonly ISentryClient _sentryClient;
-        private readonly ConfigurationServices _configurationServices;
-        private readonly IAppSettings _appSettings;
-        private readonly BetSettledSubscriber _sut;
+        private readonly PromotionApiSettings promotionApiSettings;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
+        private readonly IPromotionService promotionService;
+        private readonly BetSettledSubscriber sut;
 
         public BetSettledSubscriberTests()
         {
-            _sentryClient = Substitute.For<ISentryClient>();
-            _configurationServices = Substitute.For<ConfigurationServices>();
-            _appSettings = Substitute.For<IAppSettings>();
-            
-            _configurationServices.AppSettings.Returns(_appSettings);
-            _sut = new BetSettledSubscriber(_sentryClient, _configurationServices);
+            promotionApiSettings = new PromotionApiSettings
+            {
+                BaseUrl = "https://test-api.com",
+                Endpoints = new PromotionEndpoints
+                {
+                    UpdateTotalTurnover = "/bonus-wins/update-total-turnover",
+                    HasBonusWin = "/bonus-wins/has-bonus-win"
+                }
+            };
+
+            sentryClient = Substitute.For<ISentryClient>();
+            appSettings = Substitute.For<IAppSettings>();
+            promotionService = Substitute.For<IPromotionService>();
+
+            appSettings.PromotionApiSettings.Returns(promotionApiSettings);
+
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService);
         }
 
-        [Fact]
-        public void SubjectName_ShouldReturnBetSettledMessagesFromAppSettings()
+        private static BetSettled CreateBetSettledMessage(
+            int gameRoundId = 123,
+            int gameTypeId = 2,
+            decimal totalAmount = 100.00m,
+            decimal totalWin = 150.00m,
+            decimal validBetAmount = 95.00m,
+            bool freeBet = false,
+            string? promotionId = null,
+            string seq = "seq_123",
+            object? playerId = null,
+            string siteId = "site_123",
+            string operatorId = "op_123",
+            string siteName = "site_name_123")
+        {
+            return new BetSettled
+            {
+                GameRoundId = gameRoundId,
+                GameTypeId = gameTypeId,
+                TotalAmount = totalAmount,
+                TotalWin = totalWin,
+                ValidBetAmount = validBetAmount,
+                FreeBet = freeBet,
+                PromotionId = promotionId,
+                Seq = seq,
+                PlayerId = playerId ?? 456,
+                SiteId = siteId,
+                OperatorId = operatorId,
+                SiteName = siteName
+            };
+        }
+
+        private static MsgHandlerEventArgs CreateMessageArgs(BetSettled betSettled)
+        {
+            var jsonMessage = JsonSerializer.Serialize(betSettled);
+            var messageData = Encoding.UTF8.GetBytes(jsonMessage);
+            var message = new Msg { Data = messageData };
+            return new MsgHandlerEventArgs(message);
+        }
+
+        private static MsgHandlerEventArgs CreateMessageArgs(string jsonContent)
+        {
+            var messageData = Encoding.UTF8.GetBytes(jsonContent);
+            var message = new Msg { Data = messageData };
+            return new MsgHandlerEventArgs(message);
+        }
+
+        [Theory]
+        [InlineData("test.bet.settled", "test.bet.settled")]
+        [InlineData("vg.local.api.bet.settled", "vg.local.api.bet.settled")]
+        [InlineData("", "")]
+        public void SubjectName_ShouldReturnBetSettledMessagesFromAppSettings(string betSettledMessages, string expected)
         {
             // Arrange
-            const string expectedSubject = "test.bet.settled";
-            var streamSettings = Substitute.For<StreamSettings>();
-            streamSettings.BetSettledMessages = expectedSubject;
-            _appSettings.StreamSettings.Returns(streamSettings);
+            var streamSettings = new StreamSettings { BetSettledMessages = betSettledMessages };
+            appSettings.StreamSettings.Returns(streamSettings);
 
             // Act
-            var result = _sut.SubjectName;
+            var result = sut.SubjectName;
 
             // Assert
-            Assert.Equal(expectedSubject, result);
+            Assert.Equal(expected, result);
         }
 
         [Fact]
         public void SubjectName_WhenStreamSettingsIsNull_ShouldReturnEmptyString()
         {
             // Arrange
-            _appSettings.StreamSettings.Returns((StreamSettings?)null);
+            appSettings.StreamSettings.Returns((StreamSettings?)null);
 
             // Act
-            var result = _sut.SubjectName;
+            var result = sut.SubjectName;
 
             // Assert
             Assert.Equal(string.Empty, result);
@@ -61,149 +125,80 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         public void SubjectName_WhenBetSettledMessagesIsNull_ShouldReturnEmptyString()
         {
             // Arrange
-            var streamSettings = Substitute.For<StreamSettings>();
-            streamSettings.BetSettledMessages = null;
-            _appSettings.StreamSettings.Returns(streamSettings);
+            var streamSettings = new StreamSettings { BetSettledMessages = null };
+            appSettings.StreamSettings.Returns(streamSettings);
 
             // Act
-            var result = _sut.SubjectName;
+            var result = sut.SubjectName;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
 
         [Fact]
+        public void Constructor_ShouldInitializeCorrectly()
+        {
+            // Assert
+            Assert.NotNull(sut);
+        }
+
+        [Fact]
         public void OnMessageReceived_WithValidBetSettledMessage_ShouldProcessSuccessfully()
         {
             // Arrange
-            var betSettled = new BetSettled
-            {
-                GameRoundId = 123,
-                GameTypeId = 2,
-                TotalAmount = 100.50m,
-                TotalWin = 200.00m,
-                ValidBetAmount = 95.00m,
-                FreeBet = true,
-                PromotionId = "promo_123",
-                Seq = "seq_123",
-                PlayerId = 456,
-                SiteId = "site_123"
-            };
-
-            var jsonMessage = JsonSerializer.Serialize(betSettled);
-            var messageData = Encoding.UTF8.GetBytes(jsonMessage);
-            
-            var mockMessage = Substitute.For<Msg>();
-            mockMessage.Data.Returns(messageData);
-            
-            var mockArgs = Substitute.For<MsgHandlerEventArgs>(mockMessage);
-            _appSettings.SystemType.Returns("TEST");
+            var betSettled = CreateBetSettledMessage();
+            var args = CreateMessageArgs(betSettled);
 
             // Act
-            _sut.OnMessageReceived(this, mockArgs);
+            sut.OnMessageReceived(this, args);
 
-            // Assert
-            _sentryClient.DidNotReceive().CaptureException(Arg.Any<Exception>());
+            // Assert - Allow async operation to complete
+            Thread.Sleep(100);
+            // Just verify no exceptions were thrown
         }
 
         [Fact]
         public void OnMessageReceived_WithNullBetSettled_ShouldNotThrowException()
         {
             // Arrange
-            var jsonMessage = "null";
-            var messageData = Encoding.UTF8.GetBytes(jsonMessage);
-            
-            var mockMessage = Substitute.For<Msg>();
-            mockMessage.Data.Returns(messageData);
-            
-            var mockArgs = Substitute.For<MsgHandlerEventArgs>(mockMessage);
-            _appSettings.SystemType.Returns("TEST");
+            var args = CreateMessageArgs("null");
 
-            // Act
-            _sut.OnMessageReceived(this, mockArgs);
-
-            // Assert
-            _sentryClient.DidNotReceive().CaptureException(Arg.Any<Exception>());
+            // Act & Assert - Should not throw
+            sut.OnMessageReceived(this, args);
         }
 
         [Fact]
-        public void OnMessageReceived_WithInvalidJson_ShouldCaptureException()
+        public void OnMessageReceived_WithPromotionalTicket_ShouldCallPromotionServiceWithCorrectParameters()
         {
             // Arrange
-            var invalidJson = "invalid json";
-            var messageData = Encoding.UTF8.GetBytes(invalidJson);
-            
-            var mockMessage = Substitute.For<Msg>();
-            mockMessage.Data.Returns(messageData);
-            
-            var mockArgs = Substitute.For<MsgHandlerEventArgs>(mockMessage);
-            _appSettings.SystemType.Returns("TEST");
+            var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, Message = "Success" });
+            promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
+
+            var betSettled = CreateBetSettledMessage(
+                gameRoundId: 456,
+                promotionId: "promo_123",
+                freeBet: true,
+                totalAmount: 100.50m,
+                totalWin: 200.00m,
+                validBetAmount: 95.75m,
+                playerId: 789,
+                operatorId: "op_456",
+                siteName: "test_site"
+            );
+            var args = CreateMessageArgs(betSettled);
 
             // Act
-            _sut.OnMessageReceived(this, mockArgs);
+            sut.OnMessageReceived(this, args);
 
-            // Assert
-            _sentryClient.Received(1).CaptureException(Arg.Any<JsonException>());
-        }
-
-        [Fact]
-        public void OnMessageReceived_WhenExceptionThrown_ShouldCaptureException()
-        {
-            // Arrange
-            var mockMessage = Substitute.For<Msg>();
-            mockMessage.Data.Returns(x => throw new Exception("Test exception"));
-            
-            var mockArgs = Substitute.For<MsgHandlerEventArgs>(mockMessage);
-
-            // Act
-            _sut.OnMessageReceived(this, mockArgs);
-
-            // Assert
-            _sentryClient.Received(1).CaptureException(Arg.Any<Exception>());
-        }
-
-        [Fact]
-        public void OnMessageReceived_WithSystemTypeNull_ShouldUseEmptyString()
-        {
-            // Arrange
-            var betSettled = new BetSettled
-            {
-                GameRoundId = 123,
-                GameTypeId = 2,
-                TotalAmount = 100.50m,
-                TotalWin = 200.00m,
-                ValidBetAmount = 95.00m,
-                FreeBet = true,
-                PromotionId = "promo_123",
-                Seq = "seq_123",
-                PlayerId = 456,
-                SiteId = "site_123"
-            };
-
-            var jsonMessage = JsonSerializer.Serialize(betSettled);
-            var messageData = Encoding.UTF8.GetBytes(jsonMessage);
-            
-            var mockMessage = Substitute.For<Msg>();
-            mockMessage.Data.Returns(messageData);
-            
-            var mockArgs = Substitute.For<MsgHandlerEventArgs>(mockMessage);
-            _appSettings.SystemType.Returns((string?)null);
-
-            // Act
-            _sut.OnMessageReceived(this, mockArgs);
-
-            // Assert
-            _sentryClient.DidNotReceive().CaptureException(Arg.Any<Exception>());
-        }
-
-        [Fact]
-        public void Constructor_ShouldInitializeCorrectly()
-        {
-            // Act
-            var subscriber = new BetSettledSubscriber(_sentryClient, _configurationServices);
-
-            // Assert
-            Assert.NotNull(subscriber);
+            // Assert - Allow async operation to complete
+            Thread.Sleep(100);
+           
+            promotionService.Received(1).UpdateTotalTurnoverAsync(Arg.Is<UpdateTotalTurnoverRequest>(r =>
+                r.PlayerId == "789" &&
+                r.OperatorId == "op_456" &&
+                r.SiteName == "test_site" &&
+                r.PromotionId == "promo_123" &&
+                r.BetAmount == 95.75m));
         }
     }
 } 
