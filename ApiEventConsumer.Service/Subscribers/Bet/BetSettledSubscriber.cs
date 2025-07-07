@@ -11,6 +11,8 @@ namespace ApiEventConsumer.Subscribers.Bet
 {
     public class BetSettledSubscriber : IEventSubscriber
     {
+        private const decimal HighMultiplierThreshold = 3.0m;
+        
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
         private readonly IPromotionService promotionService;
@@ -107,7 +109,7 @@ namespace ApiEventConsumer.Subscribers.Bet
 
                 var multiplier = betSettled.TotalWin / betSettled.TotalAmount;
 
-                if (multiplier > 3)
+                if (multiplier > HighMultiplierThreshold)
                 {
                     Console.WriteLine($"HIGH MULTIPLIER DETECTED: GameRoundId={betSettled.GameRoundId}, " +
                                     $"GameTypeId={betSettled.GameTypeId}, TotalAmount={betSettled.TotalAmount}, " +

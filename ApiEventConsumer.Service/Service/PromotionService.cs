@@ -35,7 +35,7 @@ namespace ApiEventConsumer.Service.Service
                     throw new InvalidOperationException("PromotionApiSettings, BaseUrl, or UpdateTotalTurnover endpoint is not configured");
                 }
 
-                var url = appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.UpdateTotalTurnover;
+                var url = new Uri(appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.UpdateTotalTurnover);
                 var responseContent = await PostJsonAsync(url, request);
 
                 var result = JsonSerializer.Deserialize<UpdateTotalTurnoverResponse>(responseContent);
@@ -64,7 +64,7 @@ namespace ApiEventConsumer.Service.Service
                     throw new InvalidOperationException("PromotionApiSettings, BaseUrl, or HasBonusWin endpoint is not configured");
                 }
 
-                var url = appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.HasBonusWin;
+                var url = new Uri(appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.HasBonusWin);
                 var responseContent = await PostJsonAsync(url, request);
 
                 var result = JsonSerializer.Deserialize<HasBonusWinResponse>(responseContent);
@@ -82,7 +82,7 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        private async Task<string> PostJsonAsync<T>(string url, T request)
+        private async Task<string> PostJsonAsync<T>(Uri url, T request)
         {
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
