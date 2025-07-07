@@ -35,17 +35,21 @@ namespace ApiEventConsumer.Service.Subscribers
 
             // Register all event subscribers
             services.AddSingleton<BetSubscriber>();
+            services.AddSingleton<BetSettledSubscriber>();
 
             // Register all subscribers as IEventSubscriber for polymorphic access
             services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSubscriber>());
+            services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSettledSubscriber>());
 
             // Now build the provider and create the manager
             var serviceProvider = services.BuildServiceProvider();
             var natsService = serviceProvider.GetRequiredService<INatsConnectionService>();
             var betSubscriber = serviceProvider.GetRequiredService<BetSubscriber>();
+            var betSettledSubscriber = serviceProvider.GetRequiredService<BetSettledSubscriber>();
             
             var manager = new SubscriberManager(natsService);
             manager.RegisterSubscriber(betSubscriber);
+            manager.RegisterSubscriber(betSettledSubscriber);
             manager.RegisterAllSubscribers();
 
             // Register the configured manager

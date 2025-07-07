@@ -55,5 +55,6 @@
         public bool Enable { get; set; }
         public string? StreamName { get; set; }
         public string? BetMessages { get; set; }
+        public string? BetSettledMessages { get; set; }
     }
 }
