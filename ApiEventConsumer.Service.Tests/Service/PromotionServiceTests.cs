@@ -244,7 +244,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             Assert.Equal("ERROR", result.Code);
         }
 
-        public void Dispose()
+        private void Dispose()
         {
             _httpClient?.Dispose();
         }

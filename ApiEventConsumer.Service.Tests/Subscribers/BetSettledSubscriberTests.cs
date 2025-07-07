@@ -67,7 +67,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 TotalWin = totalWin,
                 ValidBetAmount = validBetAmount,
                 FreeBet = freeBet,
-                PromotionId = promotionId,
+                PromotionId = promotionId ?? string.Empty,
                 Seq = seq,
                 PlayerId = playerId ?? 456,
                 SiteId = siteId,
