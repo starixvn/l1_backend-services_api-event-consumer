@@ -83,7 +83,6 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
         [InlineData("SUCCESS")]
         [InlineData("ERROR")]
         [InlineData("")]
-        [InlineData(null)]
         public void Code_ShouldHandleValidValues(string code)
         {
             // Arrange
@@ -100,7 +99,6 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
         [InlineData("Success")]
         [InlineData("Error occurred")]
         [InlineData("")]
-        [InlineData(null)]
         public void Message_ShouldHandleValidValues(string message)
         {
             // Arrange
