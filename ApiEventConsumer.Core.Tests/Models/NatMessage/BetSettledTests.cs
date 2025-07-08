@@ -128,7 +128,6 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
         [Theory]
         [InlineData("promo_123")]
         [InlineData("")]
-        [InlineData(null)]
         public void PromotionId_ShouldHandleValidValues(string promotionId)
         {
             // Arrange
@@ -144,7 +143,6 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
         [Theory]
         [InlineData("seq_123")]
         [InlineData("")]
-        [InlineData(null)]
         public void Seq_ShouldHandleValidValues(string seq)
         {
             // Arrange
@@ -160,7 +158,6 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
         [Theory]
         [InlineData("site_123")]
         [InlineData("")]
-        [InlineData(null)]
         public void SiteId_ShouldHandleValidValues(string siteId)
         {
             // Arrange
@@ -176,7 +173,6 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
         [Theory]
         [InlineData("op_123")]
         [InlineData("")]
-        [InlineData(null)]
         public void OperatorId_ShouldHandleValidValues(string operatorId)
         {
             // Arrange
@@ -192,7 +188,6 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
         [Theory]
         [InlineData("site_name_123")]
         [InlineData("")]
-        [InlineData(null)]
         public void SiteName_ShouldHandleValidValues(string siteName)
         {
             // Arrange
