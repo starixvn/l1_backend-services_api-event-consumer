@@ -1,6 +1,4 @@
 using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
 
@@ -28,7 +26,7 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
-                if (appSettings.PromotionApiSettings == null || 
+                if (appSettings.PromotionApiSettings == null ||
                     string.IsNullOrWhiteSpace(appSettings.PromotionApiSettings.BaseUrl) ||
                     string.IsNullOrWhiteSpace(appSettings.PromotionApiSettings.Endpoints?.UpdateTotalTurnover))
                 {
@@ -42,7 +40,7 @@ namespace ApiEventConsumer.Service.Service
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                
+
                 return new UpdateTotalTurnoverResponse
                 {
                     Success = false,
@@ -56,11 +54,11 @@ namespace ApiEventConsumer.Service.Service
         private async Task<TResponse> PostAsync<TRequest, TResponse>(Uri url, TRequest request)
         {
             using var response = await httpClient.PostAsJsonAsync(url, request);
-            
+
             response.EnsureSuccessStatusCode();
-            
+
             var result = await response.Content.ReadFromJsonAsync<TResponse>();
             return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
         }
     }
-} 
+}
