@@ -195,7 +195,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             // Assert
             Assert.True(result);
-            promotionService.Received(1).UpdateTotalTurnoverAsync(Arg.Is<UpdateTotalTurnoverRequest>(r =>
+            await promotionService.Received(1).UpdateTotalTurnoverAsync(Arg.Is<UpdateTotalTurnoverRequest>(r =>
                 r.PlayerId == "789" &&
                 r.OperatorId == "op_456" &&
                 r.SiteName == "test_site" &&
