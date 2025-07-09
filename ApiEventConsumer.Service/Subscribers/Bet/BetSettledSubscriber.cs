@@ -42,12 +42,12 @@ namespace ApiEventConsumer.Subscribers.Bet
                     return true;
                 }
                 
-                return false; // Invalid message format
+                return false; 
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                return false; // Processing failed
+                return false; 
             }
         }
 
@@ -71,13 +71,13 @@ namespace ApiEventConsumer.Subscribers.Bet
             {
                 var request = new UpdateTotalTurnoverRequest
                 {
-                    PlayerId = betSettled.PlayerId.ToString(),
+                    PlayerId = betSettled.PlayerId?.ToString(),
                     OperatorId = betSettled.OperatorId,
                     SiteName = betSettled.SiteName,
                     BetAmount = betSettled.ValidBetAmount
                 };
 
-                var response = await promotionService.UpdateTotalTurnoverAsync(request);
+                await promotionService.UpdateTotalTurnoverAsync(request);
             }
             catch (Exception ex)
             {
