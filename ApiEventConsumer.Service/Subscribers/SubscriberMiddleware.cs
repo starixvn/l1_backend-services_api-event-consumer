@@ -31,7 +31,6 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
-            services.AddSingleton<IAppSettings>(provider => provider.GetRequiredService<ConfigurationServices>().AppSettings);
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
             services.AddHttpClient();
