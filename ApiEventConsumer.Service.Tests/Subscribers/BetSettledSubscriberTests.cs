@@ -42,6 +42,10 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
+            // Setup default PromotionService mock response for all tests
+            var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, Message = "Success" });
+            promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
+
             sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService);
         }
 
@@ -143,37 +147,36 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public void OnMessageReceived_WithValidBetSettledMessage_ShouldProcessSuccessfully()
+        public async Task OnMessageReceived_WithValidBetSettledMessage_ShouldProcessSuccessfully()
         {
             // Arrange
             var betSettled = CreateBetSettledMessage();
             var args = CreateMessageArgs(betSettled);
 
             // Act
-            sut.OnMessageReceived(this, args);
+            var result = await sut.OnMessageReceived(this, args);
 
-            // Assert - Allow async operation to complete
-            Thread.Sleep(100);
-            // Just verify no exceptions were thrown
+            // Assert
+            Assert.True(result);
         }
 
         [Fact]
-        public void OnMessageReceived_WithNullBetSettled_ShouldNotThrowException()
+        public async Task OnMessageReceived_WithNullBetSettled_ShouldReturnFalse()
         {
             // Arrange
             var args = CreateMessageArgs("null");
 
-            // Act & Assert - Should not throw
-            sut.OnMessageReceived(this, args);
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.False(result);
         }
 
         [Fact]
-        public void OnMessageReceived_WithPromotionalTicket_ShouldCallPromotionServiceWithCorrectParameters()
+        public async Task OnMessageReceived_WithPromotionalTicket_ShouldCallPromotionServiceWithCorrectParameters()
         {
             // Arrange
-            var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, Message = "Success" });
-            promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
-
             var betSettled = CreateBetSettledMessage(
                 gameRoundId: 456,
                 promotionId: "promo_123",
@@ -188,16 +191,14 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var args = CreateMessageArgs(betSettled);
 
             // Act
-            sut.OnMessageReceived(this, args);
+            var result = await sut.OnMessageReceived(this, args);
 
-            // Assert - Allow async operation to complete
-            Thread.Sleep(100);
-           
+            // Assert
+            Assert.True(result);
             promotionService.Received(1).UpdateTotalTurnoverAsync(Arg.Is<UpdateTotalTurnoverRequest>(r =>
                 r.PlayerId == "789" &&
                 r.OperatorId == "op_456" &&
                 r.SiteName == "test_site" &&
-                r.PromotionId == "promo_123" &&
                 r.BetAmount == 95.75m));
         }
     }

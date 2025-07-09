@@ -5,6 +5,7 @@ using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Service.Service;
 using NATS.Client;
+using System.Threading.Tasks;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
@@ -26,7 +27,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         }
 
         public string SubjectName => appSettings?.StreamSettings?.BetMessages ?? string.Empty;
-        public void OnMessageReceived(object sender, MsgHandlerEventArgs args)
+        public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -36,15 +37,15 @@ namespace ApiEventConsumer.Subscribers.Bet
 
                 if (betCreated != null && (double)betCreated.Amount >= appSettings.HighStake)
                 {
-                    // Use Task.Run to handle async operation in void method
-                    Task.Run(async () => {
-                        await highStakeServices.NotifyHighStake(betCreated, systemType);
-                    });
+                    await highStakeServices.NotifyHighStake(betCreated, systemType);
                 }
+                
+                return true; // Processing successful
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                return false; // Processing failed
             }
         }
     }

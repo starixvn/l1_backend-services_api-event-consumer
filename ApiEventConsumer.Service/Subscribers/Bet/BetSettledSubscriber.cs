@@ -29,7 +29,7 @@ namespace ApiEventConsumer.Subscribers.Bet
 
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
-        public void OnMessageReceived(object sender, MsgHandlerEventArgs args)
+        public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -38,14 +38,16 @@ namespace ApiEventConsumer.Subscribers.Bet
 
                 if (betSettled != null)
                 {
-                    Task.Run(async () => {
-                        await ProcessBetSettled(betSettled);
-                    });
+                    await ProcessBetSettled(betSettled);
+                    return true;
                 }
+                
+                return false; // Invalid message format
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                return false; // Processing failed
             }
         }
 
@@ -69,30 +71,17 @@ namespace ApiEventConsumer.Subscribers.Bet
             {
                 var request = new UpdateTotalTurnoverRequest
                 {
-                    PlayerId = betSettled.PlayerId?.ToString() ?? string.Empty,
-                    OperatorId = betSettled.OperatorId ?? string.Empty,
-                    SiteName = betSettled.SiteName ?? string.Empty,
-                    PromotionId = betSettled.PromotionId,
+                    PlayerId = betSettled.PlayerId.ToString(),
+                    OperatorId = betSettled.OperatorId,
+                    SiteName = betSettled.SiteName,
                     BetAmount = betSettled.ValidBetAmount
                 };
 
                 var response = await promotionService.UpdateTotalTurnoverAsync(request);
-
-                if (response.Success)
-                {
-                    Console.WriteLine($"Promotional ticket processed successfully: GameRoundId={betSettled.GameRoundId}, " +
-                                    $"PromotionId={betSettled.PromotionId}, ValidBetAmount={betSettled.ValidBetAmount}");
-                    return;
-                }
-
-                Console.WriteLine($"Failed to process promotional ticket: GameRoundId={betSettled.GameRoundId}, " +
-                                $"PromotionId={betSettled.PromotionId}, Error={response.Message}");
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                Console.WriteLine($"Exception processing promotional ticket: GameRoundId={betSettled.GameRoundId}, " +
-                                $"PromotionId={betSettled.PromotionId}, Exception={ex.Message}");
             }
         }
 
@@ -100,10 +89,8 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                if (betSettled.TotalAmount <= 0)
+                if (betSettled.TotalAmount <= 0 || betSettled.TotalWin < betSettled.TotalAmount * HighMultiplierThreshold)
                 {
-                    Console.WriteLine($"Normal ticket with zero amount: GameRoundId={betSettled.GameRoundId}, " +
-                                    $"TotalAmount={betSettled.TotalAmount}, TotalWin={betSettled.TotalWin}");
                     return;
                 }
 
@@ -125,8 +112,6 @@ namespace ApiEventConsumer.Subscribers.Bet
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                Console.WriteLine($"Exception processing normal ticket: GameRoundId={betSettled.GameRoundId}, " +
-                                $"Exception={ex.Message}");
             }
         }
     }

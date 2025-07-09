@@ -82,6 +82,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         {
             // Arrange
             _mockSubscriber.SubjectName.Returns("test.subject");
+            _mockSubscriber.OnMessageReceived(Arg.Any<object>(), Arg.Any<MsgHandlerEventArgs>()).Returns(Task.FromResult(true));
             _sut.RegisterSubscriber(_mockSubscriber);
 
             // Capture the message handler when ConfigureJetStream is called
@@ -96,10 +97,11 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
 
             // Create test message and invoke the captured handler
             var mockArgs = Substitute.For<MsgHandlerEventArgs>(new Msg());
-            await capturedHandler(null, mockArgs);
+            var result = await capturedHandler(null, mockArgs);
 
             // Assert
-            _mockSubscriber.Received(1).OnMessageReceived(Arg.Any<object>(), mockArgs);
+            Assert.True(result);
+            await _mockSubscriber.Received(1).OnMessageReceived(Arg.Any<object>(), mockArgs);
         }
     }
 }

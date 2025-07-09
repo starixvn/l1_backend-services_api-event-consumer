@@ -1,4 +1,5 @@
-﻿using ApiEventConsumer.Api._Shared.Helpers;
+﻿using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
@@ -30,6 +31,7 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<IGeneralGameSettingService, GeneralGameSettingServices>();
             services.AddSingleton<RepositoryServices>();
             services.AddSingleton<ConfigurationServices>();
+            services.AddSingleton<IAppSettings>(provider => provider.GetRequiredService<ConfigurationServices>().AppSettings);
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
             services.AddHttpClient();

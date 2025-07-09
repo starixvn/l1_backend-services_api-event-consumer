@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
@@ -8,7 +9,6 @@ namespace ApiEventConsumer.Service.Service
     public interface IPromotionService
     {
         Task<UpdateTotalTurnoverResponse> UpdateTotalTurnoverAsync(UpdateTotalTurnoverRequest request);
-        Task<HasBonusWinResponse> HasBonusWinAsync(HasBonusWinRequest request);
     }
 
     public class PromotionService : IPromotionService
@@ -17,10 +17,10 @@ namespace ApiEventConsumer.Service.Service
         private readonly IAppSettings appSettings;
         private readonly ISentryClient sentryClient;
 
-        public PromotionService(IHttpClientFactory httpClientFactory, ConfigurationServices configurations, ISentryClient sentryClient)
+        public PromotionService(HttpClient httpClient, IAppSettings appSettings, ISentryClient sentryClient)
         {
-            this.httpClient = httpClientFactory.CreateClient();
-            this.appSettings = configurations.AppSettings;
+            this.httpClient = httpClient;
+            this.appSettings = appSettings;
             this.sentryClient = sentryClient;
         }
 
@@ -36,14 +36,13 @@ namespace ApiEventConsumer.Service.Service
                 }
 
                 var url = new Uri(appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.UpdateTotalTurnover);
-                var responseContent = await PostJsonAsync(url, request);
-
-                var result = JsonSerializer.Deserialize<UpdateTotalTurnoverResponse>(responseContent);
-                return result ?? new UpdateTotalTurnoverResponse { Success = false, Code = "ERROR", Message = "Empty response" };
+                var result = await PostAsync<UpdateTotalTurnoverRequest, UpdateTotalTurnoverResponse>(url, request);
+                return result;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                
                 return new UpdateTotalTurnoverResponse
                 {
                     Success = false,
@@ -53,52 +52,15 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        public async Task<HasBonusWinResponse> HasBonusWinAsync(HasBonusWinRequest request)
+
+        private async Task<TResponse> PostAsync<TRequest, TResponse>(Uri url, TRequest request)
         {
-            try
-            {
-                if (appSettings.PromotionApiSettings == null || 
-                    string.IsNullOrWhiteSpace(appSettings.PromotionApiSettings.BaseUrl) ||
-                    string.IsNullOrWhiteSpace(appSettings.PromotionApiSettings.Endpoints?.HasBonusWin))
-                {
-                    throw new InvalidOperationException("PromotionApiSettings, BaseUrl, or HasBonusWin endpoint is not configured");
-                }
-
-                var url = new Uri(appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.HasBonusWin);
-                var responseContent = await PostJsonAsync(url, request);
-
-                var result = JsonSerializer.Deserialize<HasBonusWinResponse>(responseContent);
-                return result ?? new HasBonusWinResponse { Success = false, Code = "ERROR", Message = "Empty response" };
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(ex);
-                return new HasBonusWinResponse
-                {
-                    Success = false,
-                    Code = "EXCEPTION",
-                    Message = $"Exception: {ex.Message}"
-                };
-            }
-        }
-
-        private async Task<string> PostJsonAsync<T>(Uri url, T request)
-        {
-            var json = JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            httpClient.DefaultRequestHeaders.Clear();
-            httpClient.DefaultRequestHeaders.Add("accept", "application/json");
-
-            var response = await httpClient.PostAsync(url, content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException($"HTTP {response.StatusCode}: {responseContent}");
-            }
-
-            return responseContent;
+            using var response = await httpClient.PostAsJsonAsync(url, request);
+            
+            response.EnsureSuccessStatusCode();
+            
+            var result = await response.Content.ReadFromJsonAsync<TResponse>();
+            return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
         }
     }
 } 
