@@ -71,7 +71,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             {
                 var request = new UpdateTotalTurnoverRequest
                 {
-                    PlayerId = betSettled.PlayerId?.ToString(),
+                    PlayerId = betSettled?.PlayerId?.ToString(),
                     OperatorId = betSettled.OperatorId,
                     SiteName = betSettled.SiteName,
                     BetAmount = betSettled.ValidBetAmount
