@@ -70,5 +70,10 @@
         public string? StreamName { get; set; }
         public string? BetMessages { get; set; }
         public string? BetSettledMessages { get; set; }
+        
+        // Stream configuration properties
+        public string? SubjectPrefix { get; set; }
+        public int MaxAgeHours { get; set; } = 24; // Default 24 hours
+        public long MaxMessages { get; set; } = 1000000; // Default 1 million messages
     }
 }

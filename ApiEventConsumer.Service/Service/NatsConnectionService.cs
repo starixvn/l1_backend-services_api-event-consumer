@@ -1,6 +1,8 @@
 using ApiEventConsumer._Shared.Configurations;
 using NATS.Client;
 using NATS.Client.JetStream;
+using NATS.Client.Internals;
+using Sentry;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -9,21 +11,19 @@ namespace ApiEventConsumer.Service.Service
         void InitializeConnection();
         void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler, string subject);
         void Disconnect();
+        bool IsHealthy();
     }
 
-    public class NatsConnectionService : INatsConnectionService
+    public class NatsConnectionService(
+        ISentryClient sentryClient,
+        IAppSettings appSettings) : INatsConnectionService
     {
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
         private IConnection? connection;
         private IAsyncSubscription? subscription;
-        public NatsConnectionService(
-            ISentryClient sentryClient,
-            IAppSettings appSettings)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = appSettings;
-        }
+        private string? currentConsumerName;
+        private string? currentStreamName;
 
         public void InitializeConnection()
         {
@@ -89,11 +89,19 @@ namespace ApiEventConsumer.Service.Service
 
         private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
         {
+            var streamSettings = appSettings.StreamSettings;
+            
+            // Use SubjectPrefix if provided, otherwise use streamName as prefix
+            var subjectPrefix = streamSettings?.SubjectPrefix ?? streamName;
+            
             var streamConfig = StreamConfiguration.Builder()
                      .WithName(streamName)
-                     .WithSubjects($"{streamName}.*")
-                     .WithStorageType(StorageType.Memory)
-                     .WithRetentionPolicy(RetentionPolicy.WorkQueue)
+                     .WithSubjects($"{subjectPrefix}.>")
+                     .WithMaxAge(Duration.OfHours(streamSettings?.MaxAgeHours ?? 24))
+                     .WithDiscardPolicy(DiscardPolicy.Old)
+                     .WithRetentionPolicy(RetentionPolicy.Limits)
+                     .WithMaxMessages(streamSettings?.MaxMessages ?? 1000000)
+                     .WithStorageType(StorageType.File) // File storage for limits-based retention
                      .Build();
 
             try
@@ -113,21 +121,23 @@ namespace ApiEventConsumer.Service.Service
 
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
-            var currentConsumerId = $"consumer_{Guid.NewGuid():N}";
+            // Use stable, meaningful consumer name based on subject
+            var consumerName = GetConsumerName(subject);
+            
+            // Store for cleanup
+            currentConsumerName = consumerName;
+            currentStreamName = streamName;
 
             var consumerConfig = ConsumerConfiguration.Builder()
-                    .WithName(currentConsumerId)
-                    .WithDurable(currentConsumerId)
+                    .WithName(consumerName)
+                    .WithDurable(consumerName)
                     .WithAckWait(30000)
-                    .WithDeliverPolicy(DeliverPolicy.All)
+                    .WithDeliverPolicy(DeliverPolicy.All) // Process all messages to ensure no data loss
                     .WithMaxAckPending(50)
                     .WithMaxDeliver(10)
                     .WithFilterSubject(subject)
-                    .Build();
-
-            var subscribeOptions = PushSubscribeOptions.Builder()
-                    .WithStream(streamName)
-                    .WithConfiguration(consumerConfig)
+                    .WithAckPolicy(AckPolicy.Explicit)
+                    .WithReplayPolicy(ReplayPolicy.Instant)
                     .Build();
 
             if (connection == null)
@@ -135,7 +145,22 @@ namespace ApiEventConsumer.Service.Service
                 return;
             }
 
+            // Create or update consumer with recent start time
             var jsManagement = connection.CreateJetStreamManagementContext();
+            try
+            {
+                jsManagement.AddOrUpdateConsumer(streamName, consumerConfig);
+            }
+            catch (NATSJetStreamException ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+
+            var subscribeOptions = PushSubscribeOptions.Builder()
+                    .WithStream(streamName)
+                    .WithConfiguration(consumerConfig)
+                    .Build();
+
             async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
             {
                 if (args.Message.MetaData == null)
@@ -153,7 +178,7 @@ namespace ApiEventConsumer.Service.Service
                         return;
                     }
 
-                    await ProcessSuccessfulMessage(args, streamName, jsManagement);
+                    ProcessSuccessfulMessage(args);
                 }
                 catch (Exception ex)
                 {
@@ -166,23 +191,91 @@ namespace ApiEventConsumer.Service.Service
             subscription.Start();
         }
 
-        private async Task ProcessSuccessfulMessage(MsgHandlerEventArgs args, string streamName, IJetStreamManagement jsManagement)
+        private string GetConsumerName(string subject)
+        {
+            // Create a stable consumer name based on subject
+            // Example: "ORDERS.received" -> "ORDERS_RECEIVED_CONSUMER"
+            var cleanSubject = subject.Replace(".", "_").Replace("*", "ALL").ToUpper();
+            return $"{cleanSubject}_CONSUMER";
+        }
+
+        public bool IsHealthy()
         {
             try
             {
-                args.Message.Ack();
-                await Task.Run(() => jsManagement.DeleteMessage(streamName, args.Message.MetaData.StreamSequence));
+                if (connection == null || connection.IsClosed())
+                {
+                    return false;
+                }
+
+                if (subscription == null || !subscription.IsValid)
+                {
+                    return false;
+                }
+
+                // Check consumer health if we have the information
+                if (currentStreamName != null && currentConsumerName != null)
+                {
+                    var jsManagement = connection.CreateJetStreamManagementContext();
+                    var consumerInfo = jsManagement.GetConsumerInfo(currentStreamName, currentConsumerName);
+                    return consumerInfo != null;
+                }
+
+                return true;
             }
-            catch (Exception deleteEx)
+            catch (Exception ex)
             {
-                sentryClient.CaptureException(deleteEx);
+                sentryClient.CaptureException(ex);
+                return false;
+            }
+        }
+
+        private void ProcessSuccessfulMessage(MsgHandlerEventArgs args)
+        {
+            try
+            {
+                // With RetentionPolicy.Limits, messages persist until stream limits are hit
+                // Messages are only deleted when MaxAge, MaxMessages, etc. limits are reached
+                args.Message.Ack();
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
             }
         }
 
         public void Disconnect()
         {
-            subscription?.Unsubscribe();
-            connection?.Dispose();
+            try
+            {
+                subscription?.Unsubscribe();
+                
+                // Clean up consumer if needed
+                if (connection != null && currentStreamName != null && currentConsumerName != null)
+                {
+                    try
+                    {
+                        var jsManagement = connection.CreateJetStreamManagementContext();
+                        // Note: In production, you might want to keep durable consumers
+                        // This depends on your specific use case and restart strategy
+                        // jsManagement.DeleteConsumer(currentStreamName, currentConsumerName);
+                    }
+                    catch (Exception ex)
+                    {
+                        sentryClient.CaptureException(ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+            finally
+            {
+                connection?.Dispose();
+                currentConsumerName = null;
+                currentStreamName = null;
+            }
         }
     }
 }

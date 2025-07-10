@@ -3,6 +3,7 @@ using TinyHealthCheck;
 using MongoDB.Driver;
 using ApiEventConsumer.Service.Subscribers;
 using Microsoft.Extensions.Configuration;
+using Sentry;
 
 namespace ApiEventConsumer
 {
@@ -20,6 +21,21 @@ namespace ApiEventConsumer
                 .ConfigureServices((hostContext, services) =>
                 {
                     var appSettings = services.AddSettings(hostContext.Configuration);
+
+                    // Register ISentryClient for dependency injection
+                    services.AddSingleton<ISentryClient>(sp =>
+                    {
+                        var sentrySection = hostContext.Configuration.GetSection("Sentry");
+                        return new SentryClient(new SentryOptions
+                        {
+                            Dsn = sentrySection.GetValue<string>("Dsn"),
+                            Environment = sentrySection.GetValue<string>("Environment"),
+                            SendDefaultPii = sentrySection.GetValue<bool>("SendDefaultPii"),
+                            AttachStacktrace = sentrySection.GetValue<bool>("AttachStacktrace"),
+                            Debug = sentrySection.GetValue<bool>("Debug"),
+                            TracesSampleRate = sentrySection.GetValue<double>("TracesSampleRate")
+                        });
+                    });
 
                     services.AddBasicTinyHealthCheck(config =>
                     {
