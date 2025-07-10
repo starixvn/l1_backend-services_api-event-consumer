@@ -25,11 +25,17 @@ namespace ApiEventConsumer
                     var appSettings = services.AddSettings(hostContext.Configuration);
                     var sentrySetting = hostContext.Configuration.GetSection("Sentry");
 
+                    //TODO need get from appsettings
                     SentrySdk.Init(options =>
                     {
                         options.Dsn = sentrySetting.GetValue<string>("Dsn");
                         options.SendDefaultPii = sentrySetting.GetValue<bool>("SendDefaultPii");
                         options.TracesSampleRate = 1.0;
+                        options.AttachStacktrace = true;
+                        options.Debug = true;
+                        options.MinimumBreadcrumbLevel = "Debug";
+                        options.MinimumEventLevel = "Warning";
+                        options.IncludeRequestPayload = true;
                         options.UseOpenTelemetry();
                     });
 
