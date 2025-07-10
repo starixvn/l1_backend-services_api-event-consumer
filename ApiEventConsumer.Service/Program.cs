@@ -32,10 +32,9 @@ namespace ApiEventConsumer
                         options.SendDefaultPii = sentrySetting.GetValue<bool>("SendDefaultPii");
                         options.TracesSampleRate = 1.0;
                         options.AttachStacktrace = true;
-                        options.Debug = true;
-                        options.MinimumBreadcrumbLevel = "Debug";
-                        options.MinimumEventLevel = "Warning";
-                        options.IncludeRequestPayload = true;
+                        options.Debug = true;                        
+                        options.CaptureFailedRequests = true;
+                        options.AutoSessionTracking = true;
                         options.UseOpenTelemetry();
                     });
 
