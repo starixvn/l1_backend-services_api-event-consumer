@@ -3,6 +3,7 @@ using NATS.Client;
 using NATS.Client.JetStream;
 using NATS.Client.Internals;
 using Sentry;
+using System.Linq;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -91,7 +92,6 @@ namespace ApiEventConsumer.Service.Service
         {
             var streamSettings = appSettings.StreamSettings;
             
-            // Use SubjectPrefix if provided, otherwise use streamName as prefix
             var subjectPrefix = streamSettings?.SubjectPrefix ?? streamName;
             
             var streamConfig = StreamConfiguration.Builder()
@@ -101,7 +101,7 @@ namespace ApiEventConsumer.Service.Service
                      .WithDiscardPolicy(DiscardPolicy.Old)
                      .WithRetentionPolicy(RetentionPolicy.Limits)
                      .WithMaxMessages(streamSettings?.MaxMessages ?? 1000000)
-                     .WithStorageType(StorageType.File) // File storage for limits-based retention
+                     .WithStorageType(StorageType.File)
                      .Build();
 
             try
@@ -121,10 +121,8 @@ namespace ApiEventConsumer.Service.Service
 
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
-            // Use stable, meaningful consumer name based on subject
             var consumerName = GetConsumerName(subject);
             
-            // Store for cleanup
             currentConsumerName = consumerName;
             currentStreamName = streamName;
 
@@ -132,7 +130,7 @@ namespace ApiEventConsumer.Service.Service
                     .WithName(consumerName)
                     .WithDurable(consumerName)
                     .WithAckWait(30000)
-                    .WithDeliverPolicy(DeliverPolicy.All) // Process all messages to ensure no data loss
+                    .WithDeliverPolicy(DeliverPolicy.All)
                     .WithMaxAckPending(50)
                     .WithMaxDeliver(10)
                     .WithFilterSubject(subject)
@@ -145,15 +143,23 @@ namespace ApiEventConsumer.Service.Service
                 return;
             }
 
-            // Create or update consumer with recent start time
             var jsManagement = connection.CreateJetStreamManagementContext();
             try
             {
+                var existingConsumer = GetExistingConsumer(jsManagement, streamName, consumerName);
+                
+                if (existingConsumer != null && !IsConsumerCompatible(existingConsumer))
+                {
+                    sentryClient.CaptureMessage($"Deleting incompatible consumer: {consumerName}");
+                    jsManagement.DeleteConsumer(streamName, consumerName);
+                }
+
                 jsManagement.AddOrUpdateConsumer(streamName, consumerConfig);
             }
             catch (NATSJetStreamException ex)
             {
                 sentryClient.CaptureException(ex);
+                throw;
             }
 
             var subscribeOptions = PushSubscribeOptions.Builder()
@@ -193,10 +199,39 @@ namespace ApiEventConsumer.Service.Service
 
         private string GetConsumerName(string subject)
         {
-            // Create a stable consumer name based on subject
-            // Example: "ORDERS.received" -> "ORDERS_RECEIVED_CONSUMER"
             var cleanSubject = subject.Replace(".", "_").Replace("*", "ALL").ToUpper();
             return $"{cleanSubject}_CONSUMER";
+        }
+
+        private ConsumerInfo? GetExistingConsumer(IJetStreamManagement jsManagement, string streamName, string consumerName)
+        {
+            try
+            {
+                return jsManagement.GetConsumerInfo(streamName, consumerName);
+            }
+            catch (NATSJetStreamException ex) when (ex.Message.Contains("consumer not found") || ex.Message.Contains("10014"))
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                return null;
+            }
+        }
+
+        private bool IsConsumerCompatible(ConsumerInfo consumerInfo)
+        {
+            try
+            {
+                sentryClient.CaptureMessage($"Recreating consumer {consumerInfo.Name} to ensure push consumer compatibility");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                return false;
+            }
         }
 
         public bool IsHealthy()
@@ -213,7 +248,6 @@ namespace ApiEventConsumer.Service.Service
                     return false;
                 }
 
-                // Check consumer health if we have the information
                 if (currentStreamName != null && currentConsumerName != null)
                 {
                     var jsManagement = connection.CreateJetStreamManagementContext();
@@ -234,8 +268,6 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
-                // With RetentionPolicy.Limits, messages persist until stream limits are hit
-                // Messages are only deleted when MaxAge, MaxMessages, etc. limits are reached
                 args.Message.Ack();
             }
             catch (Exception ex)
@@ -244,21 +276,17 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        public void Disconnect()
+                public void Disconnect()
         {
             try
             {
                 subscription?.Unsubscribe();
                 
-                // Clean up consumer if needed
                 if (connection != null && currentStreamName != null && currentConsumerName != null)
                 {
                     try
                     {
                         var jsManagement = connection.CreateJetStreamManagementContext();
-                        // Note: In production, you might want to keep durable consumers
-                        // This depends on your specific use case and restart strategy
-                        // jsManagement.DeleteConsumer(currentStreamName, currentConsumerName);
                     }
                     catch (Exception ex)
                     {
