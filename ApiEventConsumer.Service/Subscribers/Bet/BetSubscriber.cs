@@ -9,22 +9,14 @@ using System.Threading.Tasks;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSubscriber : IEventSubscriber
+    public class BetSubscriber(
+        ISentryClient sentryClient,
+        IHighStakeServices highStakeServices,
+        ConfigurationServices configurations) : IEventSubscriber
     {
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
-        private readonly IHighStakeServices highStakeServices;
-
-
-        public BetSubscriber(
-            ISentryClient sentryClient,
-            IHighStakeServices highStakeServices,
-            ConfigurationServices configurations)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = configurations.AppSettings;
-            this.highStakeServices = highStakeServices;
-        }
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = configurations.AppSettings;
+        private readonly IHighStakeServices highStakeServices = highStakeServices;
 
         public string SubjectName => appSettings?.StreamSettings?.BetMessages ?? string.Empty;
         public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
@@ -39,7 +31,7 @@ namespace ApiEventConsumer.Subscribers.Bet
                 {
                     await highStakeServices.NotifyHighStake(betCreated, systemType);
                 }
-                
+
                 return true; // Processing successful
             }
             catch (Exception ex)
@@ -49,4 +41,4 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
     }
-} 
+}

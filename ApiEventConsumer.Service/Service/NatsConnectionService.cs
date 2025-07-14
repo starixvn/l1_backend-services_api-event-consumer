@@ -4,6 +4,8 @@ using NATS.Client.JetStream;
 using NATS.Client.Internals;
 using Sentry;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -19,10 +21,33 @@ namespace ApiEventConsumer.Service.Service
         ISentryClient sentryClient,
         IAppSettings appSettings) : INatsConnectionService
     {
+        // Connection constants
+        private const int MaxReconnectAttempts = 10;
+        private const int ReconnectWaitMs = 10000;
+        
+        // Consumer configuration constants
+        private const int ConsumerAckWaitMs = 30000;
+        private const int ConsumerMaxAckPending = 50;
+        private const int ConsumerMaxDeliver = 10;
+        
+        // Pull subscription constants
+        private const int PullBatchSize = 10;
+        private const int PullTimeoutMs = 1000;
+        private const int NoMessageDelayMs = 100;
+        private const int ErrorRetryDelayMs = 1000;
+        
+        // Shutdown constants
+        private const int ShutdownWaitMs = 500;
+        
+        // Consumer naming constants
+        private const string PullConsumerSuffix = "_PULL";
+        private const string ConsumerSuffix = "_CONSUMER";
+
         private readonly ISentryClient sentryClient = sentryClient;
         private readonly IAppSettings appSettings = appSettings;
         private IConnection? connection;
-        private IAsyncSubscription? subscription;
+        private readonly List<IJetStreamPullSubscription> subscriptions = new();
+        private readonly List<CancellationTokenSource> cancellationTokenSources = new();
         private string? currentConsumerName;
         private string? currentStreamName;
 
@@ -30,9 +55,6 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
-                const int maxReconnect = 10;
-                const int reconnectWait = 10000;
-
                 var streamSettings = appSettings.StreamSettings;
                 if (streamSettings?.Enable != true)
                 {
@@ -42,8 +64,8 @@ namespace ApiEventConsumer.Service.Service
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
                 options.AllowReconnect = true;
-                options.MaxReconnect = maxReconnect;
-                options.ReconnectWait = reconnectWait;
+                options.MaxReconnect = MaxReconnectAttempts;
+                options.ReconnectWait = ReconnectWaitMs;
                 options.DisconnectedEventHandler += (_, _) =>
                 {
                     sentryClient.CaptureException(new Exception("Disconnected from NATS server - attempting to reconnect"));
@@ -77,9 +99,6 @@ namespace ApiEventConsumer.Service.Service
                 }
 
                 var jsContext = connection.CreateJetStreamContext();
-                var jsManagement = connection.CreateJetStreamManagementContext();
-
-                ConfigureStream(jsManagement, streamSettings.StreamName);
                 ConfigureSubscription(jsContext, streamSettings.StreamName, subject, messageHandler);
             }
             catch (Exception ex)
@@ -88,51 +107,21 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        private void ConfigureStream(IJetStreamManagement jsManagement, string streamName)
-        {
-            var streamSettings = appSettings.StreamSettings;
-            
-            var subjectPrefix = streamSettings?.SubjectPrefix ?? streamName;
-            
-            var streamConfig = StreamConfiguration.Builder()
-                     .WithName(streamName)
-                     .WithSubjects($"{subjectPrefix}.>")
-                     .WithMaxAge(Duration.OfHours(streamSettings?.MaxAgeHours ?? 24))
-                     .WithDiscardPolicy(DiscardPolicy.Old)
-                     .WithRetentionPolicy(RetentionPolicy.Limits)
-                     .WithMaxMessages(streamSettings?.MaxMessages ?? 1000000)
-                     .WithStorageType(StorageType.File)
-                     .Build();
 
-            try
-            {
-                var streamInfo = jsManagement.GetStreamInfo(streamName);
-                if (streamInfo == null)
-                {
-                    jsManagement.AddStream(streamConfig);
-                }
-            }
-            catch (NATSJetStreamException ex)
-            {
-                sentryClient.CaptureException(ex);
-            }
-
-        }
 
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
-            var consumerName = GetConsumerName(subject);
-            
+            var consumerName = $"{GetConsumerName(subject)}{PullConsumerSuffix}";
+
             currentConsumerName = consumerName;
             currentStreamName = streamName;
 
             var consumerConfig = ConsumerConfiguration.Builder()
                     .WithName(consumerName)
-                    .WithDurable(consumerName)
-                    .WithAckWait(30000)
+                    .WithAckWait(ConsumerAckWaitMs)
                     .WithDeliverPolicy(DeliverPolicy.All)
-                    .WithMaxAckPending(50)
-                    .WithMaxDeliver(10)
+                    .WithMaxAckPending(ConsumerMaxAckPending)
+                    .WithMaxDeliver(ConsumerMaxDeliver)
                     .WithFilterSubject(subject)
                     .WithAckPolicy(AckPolicy.Explicit)
                     .WithReplayPolicy(ReplayPolicy.Instant)
@@ -146,14 +135,8 @@ namespace ApiEventConsumer.Service.Service
             var jsManagement = connection.CreateJetStreamManagementContext();
             try
             {
-                var existingConsumer = GetExistingConsumer(jsManagement, streamName, consumerName);
-                
-                if (existingConsumer != null && !IsConsumerCompatible(existingConsumer))
-                {
-                    sentryClient.CaptureMessage($"Deleting incompatible consumer: {consumerName}");
-                    jsManagement.DeleteConsumer(streamName, consumerName);
-                }
-
+                // With PULL consumers, we can simply create or update the consumer
+                // The AddOrUpdateConsumer method is idempotent and will handle existing consumers
                 jsManagement.AddOrUpdateConsumer(streamName, consumerConfig);
             }
             catch (NATSJetStreamException ex)
@@ -162,77 +145,114 @@ namespace ApiEventConsumer.Service.Service
                 throw;
             }
 
-            var subscribeOptions = PushSubscribeOptions.Builder()
+            var subscribeOptions = PullSubscribeOptions.Builder()
                     .WithStream(streamName)
                     .WithConfiguration(consumerConfig)
                     .Build();
 
-            async void autoAckHandler(object? sender, MsgHandlerEventArgs args)
+            var subscription = jsContext.PullSubscribe(subject, subscribeOptions);
+            subscriptions.Add(subscription);
+
+            // Start the message pulling loop
+            var cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSources.Add(cancellationTokenSource);
+            
+            _ = Task.Run(async () => await StartMessagePullingLoop(subscription, handler, cancellationTokenSource.Token));
+        }
+
+        private async Task StartMessagePullingLoop(IJetStreamPullSubscription subscription, Func<object?, MsgHandlerEventArgs, Task<bool>> handler, CancellationToken cancellationToken)
+        {
+            try
             {
-                if (args.Message.MetaData == null)
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    args.Message.Nak();
+                    try
+                    {
+                        // Fetch messages in batches to improve performance
+                        subscription.Pull(PullBatchSize);
+                        
+                        // Wait for messages to arrive
+                        var messages = subscription.Fetch(PullBatchSize, PullTimeoutMs);
+                        
+                        foreach (var message in messages)
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                                break;
+
+                            await ProcessPulledMessage(message, handler);
+                        }
+                        
+                        // If no messages were received, wait a bit before trying again
+                        if (messages.Count == 0)
+                        {
+                            await Task.Delay(NoMessageDelayMs, cancellationToken);
+                        }
+                    }
+                    catch (NATSTimeoutException)
+                    {
+                        // Timeout is expected when no messages are available, continue
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        sentryClient.CaptureException(ex);
+                        // Wait before retrying to avoid tight error loops
+                        await Task.Delay(ErrorRetryDelayMs, cancellationToken);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when cancellation is requested
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task ProcessPulledMessage(Msg message, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
+        {
+            try
+            {
+                if (message.MetaData == null)
+                {
+                    message.Nak();
                     return;
                 }
 
+                var args = new MsgHandlerEventArgs(message);
+                bool success = await handler(null, args);
+                
+                if (!success)
+                {
+                    message.Nak();
+                    return;
+                }
+
+                message.Ack();
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
                 try
                 {
-                    bool success = await handler(sender, args);
-                    if (!success)
-                    {
-                        args.Message.Nak();
-                        return;
-                    }
-
-                    ProcessSuccessfulMessage(args);
+                    message.Nak();
                 }
-                catch (Exception ex)
+                catch (Exception ackEx)
                 {
-                    sentryClient.CaptureException(ex);
-                    args.Message.Nak();
+                    sentryClient.CaptureException(ackEx);
                 }
             }
-
-            subscription = jsContext.PushSubscribeAsync(subject, autoAckHandler, false, subscribeOptions);
-            subscription.Start();
         }
 
         private string GetConsumerName(string subject)
         {
             var cleanSubject = subject.Replace(".", "_").Replace("*", "ALL").ToUpper();
-            return $"{cleanSubject}_CONSUMER";
+            return $"{cleanSubject}{ConsumerSuffix}";
         }
 
-        private ConsumerInfo? GetExistingConsumer(IJetStreamManagement jsManagement, string streamName, string consumerName)
-        {
-            try
-            {
-                return jsManagement.GetConsumerInfo(streamName, consumerName);
-            }
-            catch (NATSJetStreamException ex) when (ex.Message.Contains("consumer not found") || ex.Message.Contains("10014"))
-            {
-                return null;
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(ex);
-                return null;
-            }
-        }
 
-        private bool IsConsumerCompatible(ConsumerInfo consumerInfo)
-        {
-            try
-            {
-                sentryClient.CaptureMessage($"Recreating consumer {consumerInfo.Name} to ensure push consumer compatibility");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(ex);
-                return false;
-            }
-        }
 
         public bool IsHealthy()
         {
@@ -243,7 +263,7 @@ namespace ApiEventConsumer.Service.Service
                     return false;
                 }
 
-                if (subscription == null || !subscription.IsValid)
+                if (subscriptions.Count == 0 || subscriptions.Any(s => s == null || !s.IsValid))
                 {
                     return false;
                 }
@@ -264,35 +284,57 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        private void ProcessSuccessfulMessage(MsgHandlerEventArgs args)
-        {
-            try
-            {
-                args.Message.Ack();
-            }
-            catch (Exception ex)
-            {
-                sentryClient.CaptureException(ex);
-            }
-        }
 
-                public void Disconnect()
+
+        public void Disconnect()
         {
             try
             {
-                subscription?.Unsubscribe();
-                
-                if (connection != null && currentStreamName != null && currentConsumerName != null)
+                // Cancel all pulling loops
+                foreach (var cancellationTokenSource in cancellationTokenSources)
                 {
                     try
                     {
-                        var jsManagement = connection.CreateJetStreamManagementContext();
+                        cancellationTokenSource?.Cancel();
                     }
                     catch (Exception ex)
                     {
                         sentryClient.CaptureException(ex);
                     }
                 }
+
+                // Wait a bit for pulling loops to finish
+                Task.Delay(ShutdownWaitMs).Wait();
+
+                // Unsubscribe from all subscriptions
+                foreach (var subscription in subscriptions)
+                {
+                    try
+                    {
+                        subscription?.Unsubscribe();
+                    }
+                    catch (Exception ex)
+                    {
+                        sentryClient.CaptureException(ex);
+                    }
+                }
+
+                subscriptions.Clear();
+
+                // Dispose cancellation token sources
+                foreach (var cancellationTokenSource in cancellationTokenSources)
+                {
+                    try
+                    {
+                        cancellationTokenSource?.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        sentryClient.CaptureException(ex);
+                    }
+                }
+
+                cancellationTokenSources.Clear();
             }
             catch (Exception ex)
             {

@@ -9,23 +9,16 @@ using NATS.Client;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSettledSubscriber : IEventSubscriber
+    public class BetSettledSubscriber(
+        ISentryClient sentryClient,
+        IAppSettings appSettings,
+        IPromotionService promotionService) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 3.0m;
-        
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
-        private readonly IPromotionService promotionService;
 
-        public BetSettledSubscriber(
-            ISentryClient sentryClient,
-            IAppSettings appSettings,
-            IPromotionService promotionService)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = appSettings;
-            this.promotionService = promotionService;
-        }
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
+        private readonly IPromotionService promotionService = promotionService;
 
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
@@ -41,21 +34,21 @@ namespace ApiEventConsumer.Subscribers.Bet
                     await ProcessBetSettled(betSettled);
                     return true;
                 }
-                
-                return false; 
+
+                return false;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                return false; 
+                return false;
             }
         }
 
         private async Task ProcessBetSettled(BetSettled betSettled)
         {
             try
-            {                
-                await HandlePromotionalTicket(betSettled);                   
+            {
+                await HandlePromotionalTicket(betSettled);
 
                 HandleNormalTicket(betSettled);
             }
@@ -115,4 +108,4 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
     }
-} 
+}
