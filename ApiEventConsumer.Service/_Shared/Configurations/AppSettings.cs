@@ -9,6 +9,8 @@
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
+        public NotificationApiSettings? NotificationApiSettings { get; set; }
+        public AuthApiSettings? AuthApiSettings { get; set; }
     }
 
     public class AppSettings : IAppSettings
@@ -20,6 +22,8 @@
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings? DatabaseSettings { get; set; }
         public StreamSettings? StreamSettings { get; set; }
+        public NotificationApiSettings? NotificationApiSettings { get; set; }
+        public AuthApiSettings? AuthApiSettings { get; set; }
 
     }
 
@@ -75,5 +79,22 @@
         public string? SubjectPrefix { get; set; }
         public int MaxAgeHours { get; set; } = 24; // Default 24 hours
         public long MaxMessages { get; set; } = 1000000; // Default 1 million messages
+    }
+
+    public class NotificationApiSettings
+    {
+        public string? BaseUrl { get; set; }
+        public string? PromotionProgressEndpoint { get; set; } = "/api/promotionProgress";
+        public int TimeoutInSeconds { get; set; } = 30;
+    }
+
+    public class AuthApiSettings
+    {
+        public string? BaseUrl { get; set; }
+        public string? TokenEndpoint { get; set; } = "/api/token";
+        public string? ClientId { get; set; }
+        public string? ClientSecret { get; set; }
+        public string? Scope { get; set; }
+        public int TimeoutInSeconds { get; set; } = 30;
     }
 }

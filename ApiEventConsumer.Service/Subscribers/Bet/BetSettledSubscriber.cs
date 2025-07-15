@@ -12,13 +12,15 @@ namespace ApiEventConsumer.Subscribers.Bet
     public class BetSettledSubscriber(
         ISentryClient sentryClient,
         IAppSettings appSettings,
-        IPromotionService promotionService) : IEventSubscriber
+        IPromotionService promotionService,
+        INotificationService notificationService) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 3.0m;
 
         private readonly ISentryClient sentryClient = sentryClient;
         private readonly IAppSettings appSettings = appSettings;
         private readonly IPromotionService promotionService = promotionService;
+        private readonly INotificationService notificationService = notificationService;
 
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
@@ -70,7 +72,13 @@ namespace ApiEventConsumer.Subscribers.Bet
                     BetAmount = betSettled.ValidBetAmount
                 };
 
-                await promotionService.UpdateTotalTurnoverAsync(request);
+                var response = await promotionService.UpdateTotalTurnoverAsync(request);
+                
+                // Send notification if promotion service was successful
+                if (response.Success)
+                {
+                    await NotifyProgress(betSettled, response);
+                }
             }
             catch (Exception ex)
             {
@@ -101,6 +109,50 @@ namespace ApiEventConsumer.Subscribers.Bet
                 Console.WriteLine($"Normal ticket processed: GameRoundId={betSettled.GameRoundId}, " +
                                 $"Multiplier={multiplier:F2}x, TotalAmount={betSettled.TotalAmount}, " +
                                 $"TotalWin={betSettled.TotalWin}");
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task NotifyProgress(BetSettled betSettled, UpdateTotalTurnoverResponse response)
+        {
+            try
+            {
+                // Validate required fields
+                var playerId = betSettled.PlayerId?.ToString() ?? string.Empty;
+                var operatorId = betSettled.OperatorId ?? string.Empty;
+                var siteName = betSettled.SiteName ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(playerId) || 
+                    string.IsNullOrWhiteSpace(operatorId) || 
+                    string.IsNullOrWhiteSpace(siteName))
+                {
+                    sentryClient.CaptureMessage($"Missing required fields for notification: PlayerId={playerId}, OperatorId={operatorId}, SiteName={siteName}");
+                    return;
+                }
+
+                var notificationRequest = new PromotionProgressRequest
+                {
+                    PlayerId = playerId,
+                    OperatorId = operatorId,
+                    SiteName = siteName,
+                    TotalTO = response.TotalTurnover,
+                    MinTO = 0, // Not available in response
+                    RemainTO = response.RemainingTO,
+                    Progress = 0, // Not available in response
+                    CanClaim = false, // Not available in response
+                    Win = betSettled.TotalWin,
+                    Expire = DateTime.MinValue // Not available in response
+                };
+
+                var notificationResponse = await notificationService.SendPromotionProgressAsync(notificationRequest);
+                
+                if (!notificationResponse.Success)
+                {
+                    sentryClient.CaptureMessage($"Notification failed: {notificationResponse.Code} - {notificationResponse.Message}");
+                }
             }
             catch (Exception ex)
             {
