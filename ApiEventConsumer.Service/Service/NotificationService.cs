@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
+using Azure.Core;
 using Sentry;
 
 namespace ApiEventConsumer.Service.Service
@@ -45,7 +46,7 @@ namespace ApiEventConsumer.Service.Service
                     {
                         Success = false,
                         Code = "AUTH_FAILED",
-                        Message = "Failed to obtain authentication token"
+                        Message = "Failed to obtain authentication token" 
                     };
                 }
 
@@ -121,6 +122,16 @@ namespace ApiEventConsumer.Service.Service
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                var authEndpoint = appSettings.AuthApiSettings.TokenEndpoint ?? "/api/token";
+                var authUrl = new Uri(appSettings.AuthApiSettings.BaseUrl + authEndpoint);
+
+                var authRequest = new
+                {
+                    clientId = appSettings.AuthApiSettings.ClientId,
+                    clientSecret = appSettings.AuthApiSettings.ClientSecret,
+                    siteId = appSettings.AuthApiSettings.Scope ?? "admin-api"
+                };
+                sentryClient.CaptureMessage($"Exception: {ex.Message} - authUrl: {authUrl} - authRequest: {authRequest} ");
                 return null;
             }
         }

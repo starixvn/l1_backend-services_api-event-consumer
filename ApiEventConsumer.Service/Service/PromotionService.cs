@@ -39,7 +39,7 @@ namespace ApiEventConsumer.Service.Service
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureException(ex);
+                sentryClient.CaptureMessage($"Exception: {ex.Message} - request: {request} ");
 
                 return new UpdateTotalTurnoverResponse
                 {
