@@ -75,7 +75,7 @@ namespace ApiEventConsumer.Subscribers.Bet
                 var response = await promotionService.UpdateTotalTurnoverAsync(request);
                 
                 // Send notification if promotion service was successful
-                if (response.Success)
+                if (String.IsNullOrEmpty(response.ErrorCode))
                 {
                     await NotifyProgress(betSettled, response);
                 }
@@ -139,12 +139,12 @@ namespace ApiEventConsumer.Subscribers.Bet
                     OperatorId = operatorId,
                     SiteName = siteName,
                     TotalTO = response.TotalTurnover,
-                    MinTO = 0, // Not available in response
+                    MinTO = response.MinRequiredTurnover,
                     RemainTO = response.RemainingTO,
-                    Progress = 0, // Not available in response
-                    CanClaim = false, // Not available in response
-                    Win = betSettled.TotalWin,
-                    Expire = DateTime.MinValue // Not available in response
+                    Progress = response.ProgressPercentage,
+                    CanClaim = response.CanClaim,
+                    Win = response.TotalWinAmount,
+                    Expire = response.ClaimExpirationDate
                 };
 
                 var notificationResponse = await notificationService.SendPromotionProgressAsync(notificationRequest);

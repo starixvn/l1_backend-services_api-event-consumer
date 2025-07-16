@@ -45,8 +45,8 @@ namespace ApiEventConsumer.Service.Service
                 return new UpdateTotalTurnoverResponse
                 {
                     Success = false,
-                    Code = "EXCEPTION",
-                    Message = $"Exception: {ex.Message}"
+                    ErrorCode = "EXCEPTION",
+                    ErrorMessage = $"Exception: {ex.Message}"
                 };
             }
         }
