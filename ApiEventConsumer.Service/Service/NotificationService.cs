@@ -97,9 +97,9 @@ namespace ApiEventConsumer.Service.Service
 
                 var authRequest = new
                 {
-                    ClientId = appSettings.AuthApiSettings.ClientId,
-                    ClientSecret = appSettings.AuthApiSettings.ClientSecret,
-                    Scope = appSettings.AuthApiSettings.Scope ?? "api"
+                    clientId = appSettings.AuthApiSettings.ClientId,
+                    clientSecret = appSettings.AuthApiSettings.ClientSecret,
+                    siteId = appSettings.AuthApiSettings.Scope ?? "admin-api"
                 };
 
                 // Clear any existing auth header for token request
