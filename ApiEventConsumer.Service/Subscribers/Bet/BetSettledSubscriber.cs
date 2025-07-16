@@ -148,11 +148,6 @@ namespace ApiEventConsumer.Subscribers.Bet
                 };
 
                 var notificationResponse = await notificationService.SendPromotionProgressAsync(notificationRequest);
-                
-                if (!notificationResponse.Success)
-                {
-                    sentryClient.CaptureMessage($"Notification failed: {notificationResponse.Code} - {notificationResponse.Message}");
-                }
             }
             catch (Exception ex)
             {

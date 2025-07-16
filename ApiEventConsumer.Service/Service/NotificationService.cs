@@ -50,7 +50,6 @@ namespace ApiEventConsumer.Service.Service
                         Message = "Failed to obtain authentication token" 
                     };
                 }
-                sentryClient.CaptureMessage($"token: {token}");
 
                 // Prepare request
                 var endpoint = appSettings.NotificationApiSettings.PromotionProgressEndpoint ?? "/api/promotionProgress";
@@ -61,16 +60,12 @@ namespace ApiEventConsumer.Service.Service
 
                 // Send request
                 var result = await PostAsync<PromotionProgressRequest, PromotionProgressResponse>(url, request);
-                sentryClient.CaptureMessage($"result notify: {result}");
                 return result;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                var endpoint = appSettings.NotificationApiSettings.PromotionProgressEndpoint ?? "/api/promotionProgress";
-                var url = new Uri(appSettings.NotificationApiSettings.BaseUrl + endpoint);
-                sentryClient.CaptureMessage($"Exception notify: {ex.Message} - url: {url} - request: {request} ");
-
+                
                 return new PromotionProgressResponse
                 {
                     Success = false,
