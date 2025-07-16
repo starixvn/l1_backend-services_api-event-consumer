@@ -4,6 +4,7 @@ using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
 using Azure.Core;
+using NATS.Client.Internals;
 using Sentry;
 
 namespace ApiEventConsumer.Service.Service
@@ -49,6 +50,7 @@ namespace ApiEventConsumer.Service.Service
                         Message = "Failed to obtain authentication token" 
                     };
                 }
+                sentryClient.CaptureMessage($"token: {token}");
 
                 // Prepare request
                 var endpoint = appSettings.NotificationApiSettings.PromotionProgressEndpoint ?? "/api/promotionProgress";
@@ -59,11 +61,15 @@ namespace ApiEventConsumer.Service.Service
 
                 // Send request
                 var result = await PostAsync<PromotionProgressRequest, PromotionProgressResponse>(url, request);
+                sentryClient.CaptureMessage($"result notify: {result}");
                 return result;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                var endpoint = appSettings.NotificationApiSettings.PromotionProgressEndpoint ?? "/api/promotionProgress";
+                var url = new Uri(appSettings.NotificationApiSettings.BaseUrl + endpoint);
+                sentryClient.CaptureMessage($"Exception notify: {ex.Message} - url: {url} - request: {request} ");
 
                 return new PromotionProgressResponse
                 {
@@ -92,22 +98,22 @@ namespace ApiEventConsumer.Service.Service
                     throw new InvalidOperationException("AuthApiSettings are not properly configured");
                 }
 
-                // Prepare auth request
-                var authEndpoint = appSettings.AuthApiSettings.TokenEndpoint ?? "/api/token";
-                var authUrl = new Uri(appSettings.AuthApiSettings.BaseUrl + authEndpoint);
+                // Prepare auth request using form data (OAuth2 standard)
+                var authUrl = new Uri(appSettings.AuthApiSettings.BaseUrl + appSettings.AuthApiSettings.TokenEndpoint);
 
-                var authRequest = new
+                var formData = new List<KeyValuePair<string, string>>
                 {
-                    clientId = appSettings.AuthApiSettings.ClientId,
-                    clientSecret = appSettings.AuthApiSettings.ClientSecret,
-                    siteId = appSettings.AuthApiSettings.Scope ?? "admin-api"
+                    new("grant_type", "client_credentials"),
+                    new("client_id", appSettings.AuthApiSettings.ClientId),
+                    new("client_secret", appSettings.AuthApiSettings.ClientSecret),
+                    new("scope", appSettings.AuthApiSettings.Scope ?? "admin-api")
                 };
 
                 // Clear any existing auth header for token request
                 httpClient.DefaultRequestHeaders.Authorization = null;
 
-                // Request token
-                var authResponse = await PostAsync<object, AuthTokenResponse>(authUrl, authRequest);
+                // Request token using form data
+                var authResponse = await PostFormAsync<AuthTokenResponse>(authUrl, formData);
 
                 if (!string.IsNullOrEmpty(authResponse.AccessToken))
                 {
@@ -122,16 +128,6 @@ namespace ApiEventConsumer.Service.Service
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                var authEndpoint = appSettings.AuthApiSettings.TokenEndpoint ?? "/api/token";
-                var authUrl = new Uri(appSettings.AuthApiSettings.BaseUrl + authEndpoint);
-
-                var authRequest = new
-                {
-                    clientId = appSettings.AuthApiSettings.ClientId,
-                    clientSecret = appSettings.AuthApiSettings.ClientSecret,
-                    siteId = appSettings.AuthApiSettings.Scope ?? "admin-api"
-                };
-                sentryClient.CaptureMessage($"Exception: {ex.Message} - authUrl: {authUrl} - authRequest: {authRequest} ");
                 return null;
             }
         }
@@ -146,6 +142,24 @@ namespace ApiEventConsumer.Service.Service
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
+            return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+        }
+
+        private async Task<TResponse> PostFormAsync<TResponse>(Uri url, List<KeyValuePair<string, string>> formData)
+        {
+            var timeout = TimeSpan.FromSeconds(appSettings.AuthApiSettings?.TimeoutInSeconds ?? 30);
+            using var cts = new CancellationTokenSource(timeout);
+
+            using var content = new FormUrlEncodedContent(formData);
+            using var response = await httpClient.PostAsync(url, content, cts.Token);
+            
+            response.EnsureSuccessStatusCode();
+
+            // Log raw response for debugging
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken: cts.Token);
+
+            // Deserialize from the string content
+            var result = JsonSerializer.Deserialize<TResponse>(responseContent);
             return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
         }
     }
