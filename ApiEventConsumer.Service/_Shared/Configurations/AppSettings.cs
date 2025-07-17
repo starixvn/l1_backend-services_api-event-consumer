@@ -78,7 +78,7 @@
         // Stream configuration properties
         public string? SubjectPrefix { get; set; }
         public int MaxAgeHours { get; set; } = 24; // Default 24 hours
-        public long MaxMessages { get; set; } = 1000000; // Default 1 million messages
+        public long MaxMessages { get; set; } = 1_000_000; // Default 1 million messages
     }
 
     public class NotificationApiSettings
