@@ -1,11 +1,6 @@
 using ApiEventConsumer._Shared.Configurations;
 using NATS.Client;
 using NATS.Client.JetStream;
-using NATS.Client.Internals;
-using Sentry;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -13,13 +8,11 @@ namespace ApiEventConsumer.Service.Service
     {
         void InitializeConnection();
         void ConfigureJetStream(Func<object?, MsgHandlerEventArgs, Task<bool>> messageHandler, string subject);
-        void Disconnect();
+        Task DisconnectAsync();
         bool IsHealthy();
     }
 
-    public class NatsConnectionService(
-        ISentryClient sentryClient,
-        IAppSettings appSettings) : INatsConnectionService
+    public class NatsConnectionService : INatsConnectionService
     {
         // Connection constants
         private const int MaxReconnectAttempts = 10;
@@ -43,13 +36,21 @@ namespace ApiEventConsumer.Service.Service
         private const string PullConsumerSuffix = "_PULL";
         private const string ConsumerSuffix = "_CONSUMER";
 
-        private readonly ISentryClient sentryClient = sentryClient;
-        private readonly IAppSettings appSettings = appSettings;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
         private IConnection? connection;
-        private readonly List<IJetStreamPullSubscription> subscriptions = new();
-        private readonly List<CancellationTokenSource> cancellationTokenSources = new();
+        private readonly List<IJetStreamPullSubscription> subscriptions;
+        private readonly List<CancellationTokenSource> cancellationTokenSources;
         private string? currentConsumerName;
         private string? currentStreamName;
+
+        public NatsConnectionService(ISentryClient sentryClient, IAppSettings appSettings)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = appSettings;
+            subscriptions = [];
+            cancellationTokenSources = [];
+        }
 
         public void InitializeConnection()
         {
@@ -166,39 +167,7 @@ namespace ApiEventConsumer.Service.Service
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    try
-                    {
-                        // Fetch messages in batches to improve performance
-                        subscription.Pull(PullBatchSize);
-                        
-                        // Wait for messages to arrive
-                        var messages = subscription.Fetch(PullBatchSize, PullTimeoutMs);
-                        
-                        foreach (var message in messages)
-                        {
-                            if (cancellationToken.IsCancellationRequested)
-                                break;
-
-                            await ProcessPulledMessage(message, handler);
-                        }
-                        
-                        // If no messages were received, wait a bit before trying again
-                        if (messages.Count == 0)
-                        {
-                            await Task.Delay(NoMessageDelayMs, cancellationToken);
-                        }
-                    }
-                    catch (NATSTimeoutException)
-                    {
-                        // Timeout is expected when no messages are available, continue
-                        continue;
-                    }
-                    catch (Exception ex)
-                    {
-                        sentryClient.CaptureException(ex);
-                        // Wait before retrying to avoid tight error loops
-                        await Task.Delay(ErrorRetryDelayMs, cancellationToken);
-                    }
+                    await PullAndProcessMessages(subscription, handler, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
@@ -208,6 +177,43 @@ namespace ApiEventConsumer.Service.Service
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task PullAndProcessMessages(IJetStreamPullSubscription subscription, Func<object?, MsgHandlerEventArgs, Task<bool>> handler, CancellationToken cancellationToken)
+        {
+            try
+            {
+                // Fetch messages in batches to improve performance
+                subscription.Pull(PullBatchSize);
+                
+                // Wait for messages to arrive
+                var messages = subscription.Fetch(PullBatchSize, PullTimeoutMs);
+                
+                foreach (var message in messages)
+                {
+                    if (cancellationToken.IsCancellationRequested){
+                        return;
+                    }
+
+                    await ProcessPulledMessage(message, handler);
+                }
+                
+                // If no messages were received, wait a bit before trying again
+                if (messages.Count == 0)
+                {
+                    await Task.Delay(NoMessageDelayMs, cancellationToken);
+                }
+            }
+            catch (NATSTimeoutException)
+            {
+                // Timeout is expected when no messages are available, continue
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                // Wait before retrying to avoid tight error loops
+                await Task.Delay(ErrorRetryDelayMs, cancellationToken);
             }
         }
 
@@ -246,9 +252,9 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-        private string GetConsumerName(string subject)
+        private static string GetConsumerName(string subject)
         {
-            var cleanSubject = subject.Replace(".", "_").Replace("*", "ALL").ToUpper();
+            var cleanSubject = subject.Replace(".", "_").Replace("*", "ALL").ToUpperInvariant();
             return $"{cleanSubject}{ConsumerSuffix}";
         }
 
@@ -286,7 +292,7 @@ namespace ApiEventConsumer.Service.Service
 
 
 
-        public void Disconnect()
+        public async Task DisconnectAsync()
         {
             try
             {
@@ -304,7 +310,7 @@ namespace ApiEventConsumer.Service.Service
                 }
 
                 // Wait a bit for pulling loops to finish
-                Task.Delay(ShutdownWaitMs).Wait();
+                await Task.Delay(ShutdownWaitMs);
 
                 // Unsubscribe from all subscriptions
                 foreach (var subscription in subscriptions)

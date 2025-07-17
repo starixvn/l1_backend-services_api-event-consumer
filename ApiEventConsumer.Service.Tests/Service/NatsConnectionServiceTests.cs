@@ -11,7 +11,7 @@ namespace ApiEventConsumer.Service.Tests.Service
     public class NatsConnectionServiceTests
     {
         [Fact]
-        public void Disconnect_DisposesConnectionAndSubscriptions()
+        public async Task Disconnect_DisposesConnectionAndSubscriptions()
         {
             // Arrange
             var sentryClient = Substitute.For<ISentryClient>();
@@ -30,7 +30,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             connectionField?.SetValue(service, connection);
 
             // Act
-            service.Disconnect();
+            await service.DisconnectAsync();
 
             // Assert
             connection.Received(1).Dispose();

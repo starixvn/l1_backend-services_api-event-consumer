@@ -9,22 +9,30 @@ using NATS.Client;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSettledSubscriber(
-        ISentryClient sentryClient,
-        IAppSettings appSettings,
-        IPromotionService promotionService,
-        INotificationService notificationService) : IEventSubscriber
+    public class BetSettledSubscriber : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 3.0m;
 
-        private readonly ISentryClient sentryClient = sentryClient;
-        private readonly IAppSettings appSettings = appSettings;
-        private readonly IPromotionService promotionService = promotionService;
-        private readonly INotificationService notificationService = notificationService;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
+        private readonly IPromotionService promotionService;
+        private readonly INotificationService notificationService;
 
+        public BetSettledSubscriber(
+            ISentryClient sentryClient, 
+            IAppSettings appSettings, 
+            IPromotionService promotionService, 
+            INotificationService notificationService)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = appSettings;
+            this.promotionService = promotionService;
+            this.notificationService = notificationService;
+        }
+ 
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
-        public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+        public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -147,7 +155,7 @@ namespace ApiEventConsumer.Subscribers.Bet
                     Expire = response.ClaimExpirationDate
                 };
 
-                var notificationResponse = await notificationService.SendPromotionProgressAsync(notificationRequest);
+                await notificationService.SendPromotionProgressAsync(notificationRequest);
             }
             catch (Exception ex)
             {

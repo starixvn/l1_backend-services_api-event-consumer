@@ -6,6 +6,6 @@ namespace ApiEventConsumer.Subscribers
     {
         string SubjectName { get; }
         
-        Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args);      
+        Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args);      
     }
 } 

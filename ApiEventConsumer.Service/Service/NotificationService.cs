@@ -16,6 +16,8 @@ namespace ApiEventConsumer.Service.Service
 
     public class NotificationService : INotificationService
     {
+        private const int TokenExpiryBufferSeconds = 300; // 5 minutes buffer for token expiry
+
         private readonly HttpClient httpClient;
         private readonly IAppSettings appSettings;
         private readonly ISentryClient sentryClient;
@@ -114,7 +116,7 @@ namespace ApiEventConsumer.Service.Service
                 {
                     cachedToken = authResponse.AccessToken;
                     // Set expiry with some buffer (subtract 5 minutes for safety)
-                    tokenExpiry = DateTime.UtcNow.AddSeconds(authResponse.ExpiresIn - 300);
+                    tokenExpiry = DateTime.UtcNow.AddSeconds(authResponse.ExpiresIn - TokenExpiryBufferSeconds);
                     return cachedToken;
                 }
 

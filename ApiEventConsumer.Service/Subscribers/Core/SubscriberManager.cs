@@ -24,7 +24,7 @@ namespace ApiEventConsumer.Subscribers
         {
             foreach (var subscriber in subscribers)
             {
-                natsService.ConfigureJetStream(subscriber.OnMessageReceived, subscriber.SubjectName);
+                natsService.ConfigureJetStream((sender, args) => subscriber.OnMessageReceived(sender, args), subscriber.SubjectName);
             }
         }
 

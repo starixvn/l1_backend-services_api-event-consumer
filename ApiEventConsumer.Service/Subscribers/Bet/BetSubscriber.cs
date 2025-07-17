@@ -9,17 +9,25 @@ using System.Threading.Tasks;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSubscriber(
-        ISentryClient sentryClient,
-        IHighStakeServices highStakeServices,
-        ConfigurationServices configurations) : IEventSubscriber
+    public class BetSubscriber: IEventSubscriber
     {
-        private readonly ISentryClient sentryClient = sentryClient;
-        private readonly IAppSettings appSettings = configurations.AppSettings;
-        private readonly IHighStakeServices highStakeServices = highStakeServices;
+        private readonly ISentryClient sentryClient;
+        private readonly IAppSettings appSettings;
+        private readonly IHighStakeServices highStakeServices;
 
         public string SubjectName => appSettings?.StreamSettings?.BetMessages ?? string.Empty;
-        public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+
+        public BetSubscriber(
+            ISentryClient sentryClient, 
+            IAppSettings appSettings, 
+            IHighStakeServices highStakeServices)
+        {
+            this.sentryClient = sentryClient;
+            this.appSettings = appSettings;
+            this.highStakeServices = highStakeServices;
+        }
+
+        public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
         {
             try
             {
