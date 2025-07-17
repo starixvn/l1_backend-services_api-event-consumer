@@ -13,8 +13,8 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
             Assert.False(response.Success);
             Assert.Equal(0m, response.TotalTurnover);
             Assert.Equal(0m, response.RemainingTO);
-            Assert.Equal(string.Empty, response.Code);
-            Assert.Equal(string.Empty, response.Message);
+            Assert.Equal(string.Empty, response.ErrorCode);
+            Assert.Equal(string.Empty, response.ErrorMessage);
         }
 
         [Fact]
@@ -25,15 +25,15 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
                 Success = true,
                 TotalTurnover = 250.75m,
                 RemainingTO = 749.25m,
-                Code = "SUCCESS",
-                Message = "Operation completed successfully"
+                ErrorCode = "SUCCESS",
+                ErrorMessage = "Operation completed successfully"
             };
 
             Assert.True(response.Success);
             Assert.Equal(250.75m, response.TotalTurnover);
             Assert.Equal(749.25m, response.RemainingTO);
-            Assert.Equal("SUCCESS", response.Code);
-            Assert.Equal("Operation completed successfully", response.Message);
+            Assert.Equal("SUCCESS", response.ErrorCode);
+            Assert.Equal("Operation completed successfully", response.ErrorMessage);
         }
 
         [Theory]
@@ -88,11 +88,11 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
             // Arrange
             var response = new UpdateTotalTurnoverResponse
             {
-                Code = code
+                ErrorCode = code
             };
 
             // Assert
-            Assert.Equal(code, response.Code);
+            Assert.Equal(code, response.ErrorCode);
         }
 
         [Theory]
@@ -104,11 +104,11 @@ namespace ApiEventConsumer.Core.Tests.Models.Promotion
             // Arrange
             var response = new UpdateTotalTurnoverResponse
             {
-                Message = message
+                ErrorMessage = message
             };
 
             // Assert
-            Assert.Equal(message, response.Message);
+            Assert.Equal(message, response.ErrorMessage);
         }
     }
 } 

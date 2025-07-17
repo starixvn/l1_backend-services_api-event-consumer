@@ -22,6 +22,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
         private readonly IPromotionService promotionService;
+        private readonly INotificationService notificationService;
         private readonly BetSettledSubscriber sut;
 
         public BetSettledSubscriberTests()
@@ -39,14 +40,15 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             sentryClient = Substitute.For<ISentryClient>();
             appSettings = Substitute.For<IAppSettings>();
             promotionService = Substitute.For<IPromotionService>();
+            notificationService = Substitute.For<INotificationService>();
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
             // Setup default PromotionService mock response for all tests
-            var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, Message = "Success" });
+            var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, ErrorMessage = "Success" });
             promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
 
-            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService);
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService);
         }
 
         private static BetSettled CreateBetSettledMessage(

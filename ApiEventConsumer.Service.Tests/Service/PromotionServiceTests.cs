@@ -52,8 +52,8 @@ namespace ApiEventConsumer.Service.Tests.Service
                 Success = true,
                 TotalTurnover = 150.75m,
                 RemainingTO = 849.25m,
-                Code = "SUCCESS",
-                Message = "Success"
+                ErrorCode = "SUCCESS",
+                ErrorMessage = "Success"
             };
 
             var mockHandler = new MockHttpMessageHandler();
@@ -68,8 +68,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
-            Assert.Equal("Success", result.Message);
-            Assert.Equal("SUCCESS", result.Code);
+            Assert.Equal("Success", result.ErrorMessage);
+            Assert.Equal("SUCCESS", result.ErrorCode);
             Assert.Equal(150.75m, result.TotalTurnover);
             Assert.Equal(849.25m, result.RemainingTO);
         }
@@ -98,8 +98,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             Assert.NotNull(result);
             Assert.False(result.Success);
-            Assert.Contains("Response status code does not indicate success", result.Message);
-            Assert.Equal("EXCEPTION", result.Code);
+            Assert.Contains("Response status code does not indicate success", result.ErrorMessage);
+            Assert.Equal("EXCEPTION", result.ErrorCode);
         }
 
         [Fact]
@@ -126,8 +126,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             Assert.NotNull(result);
             Assert.False(result.Success);
-            Assert.Contains("Exception: Network error", result.Message);
-            Assert.Equal("EXCEPTION", result.Code);
+            Assert.Contains("Exception: Network error", result.ErrorMessage);
+            Assert.Equal("EXCEPTION", result.ErrorCode);
             _sentryClient.Received(1).CaptureException(Arg.Any<Exception>());
         }
 
@@ -155,8 +155,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             Assert.NotNull(result);
             Assert.False(result.Success);
-            Assert.Contains("Exception: Failed to deserialize response", result.Message);
-            Assert.Equal("EXCEPTION", result.Code);
+            Assert.Contains("Exception: Failed to deserialize response", result.ErrorMessage);
+            Assert.Equal("EXCEPTION", result.ErrorCode);
         }
 
 
