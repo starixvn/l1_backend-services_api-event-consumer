@@ -37,12 +37,11 @@ namespace ApiEventConsumer.Service.Service
 
                 var url = new Uri(appSettings.PromotionApiSettings.BaseUrl + appSettings.PromotionApiSettings.Endpoints.UpdateTotalTurnover);
                 var result = await PostAsync<UpdateTotalTurnoverRequest, UpdateTotalTurnoverResponse>(url, request);
-                sentryClient.CaptureMessage($"result UpdateTotalTurnoverAsync: {result}");
                 return result;
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureMessage($"Exception: {ex.Message} - request: {request} ");
+                sentryClient.CaptureException(ex);
 
                 return new UpdateTotalTurnoverResponse
                 {
