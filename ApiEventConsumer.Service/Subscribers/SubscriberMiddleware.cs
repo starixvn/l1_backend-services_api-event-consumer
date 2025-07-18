@@ -34,6 +34,7 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
             services.AddHttpClient();
+            services.AddSingleton<IAuthService, AuthService>();
             services.AddSingleton<IPromotionService, PromotionService>();
             services.AddSingleton<INotificationService, NotificationService>();
 
