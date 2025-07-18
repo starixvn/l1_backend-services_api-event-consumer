@@ -9,15 +9,20 @@ namespace ApiEventConsumer.Service.Service
         Task<PromotionProgressResponse> SendPromotionProgressAsync(PromotionProgressRequest request);
     }
 
-    public class NotificationService : BaseApiService, INotificationService
+    public class NotificationService : INotificationService
     {
+        private readonly IBaseApiService _baseApiService;
+        private readonly IAppSettings appSettings;
+        private readonly ISentryClient sentryClient;
+
         public NotificationService(
-            HttpClient httpClient, 
+            IBaseApiService baseApiService,
             IAppSettings appSettings, 
-            ISentryClient sentryClient,
-            IAuthService authService) 
-            : base(httpClient, appSettings, sentryClient, authService)
+            ISentryClient sentryClient)
         {
+            this._baseApiService = baseApiService;
+            this.appSettings = appSettings;
+            this.sentryClient = sentryClient;
         }
 
         public async Task<PromotionProgressResponse> SendPromotionProgressAsync(PromotionProgressRequest request)
@@ -35,7 +40,7 @@ namespace ApiEventConsumer.Service.Service
                 var url = new Uri(appSettings.NotificationApiSettings.BaseUrl + endpoint);
 
                 // Send request using base class method with automatic authentication
-                var result = await PostAsync<PromotionProgressRequest, PromotionProgressResponse>(
+                var result = await _baseApiService.PostAsync<PromotionProgressRequest, PromotionProgressResponse>(
                     url, 
                     request, 
                     appSettings.NotificationApiSettings.TimeoutInSeconds);

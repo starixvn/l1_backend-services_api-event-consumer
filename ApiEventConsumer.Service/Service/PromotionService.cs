@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
+using ApiEventConsumer.Constants;
+using Sentry;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -59,7 +61,7 @@ namespace ApiEventConsumer.Service.Service
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<TResponse>();
-            return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+            return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
         }
     }
 }

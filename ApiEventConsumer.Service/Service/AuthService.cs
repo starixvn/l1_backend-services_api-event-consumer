@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
-using Sentry;
+using ApiEventConsumer.Constants;
 
 namespace ApiEventConsumer.Service.Service
 {
@@ -108,7 +108,7 @@ namespace ApiEventConsumer.Service.Service
 
             // Deserialize from the string content
             var result = JsonSerializer.Deserialize<TResponse>(responseContent);
-            return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+            return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
         }
     }
 } 

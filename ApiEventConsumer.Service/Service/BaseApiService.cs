@@ -1,17 +1,17 @@
 using System.Net.Http.Json;
 using ApiEventConsumer._Shared.Configurations;
-using Sentry;
+using ApiEventConsumer.Constants;
 
 namespace ApiEventConsumer.Service.Service
 {
-    public abstract class BaseApiService
+    public class BaseApiService : IBaseApiService
     {
         protected readonly HttpClient httpClient;
         protected readonly IAppSettings appSettings;
         protected readonly ISentryClient sentryClient;
         protected readonly IAuthService authService;
 
-        protected BaseApiService(
+        public BaseApiService(
             HttpClient httpClient, 
             IAppSettings appSettings, 
             ISentryClient sentryClient,
@@ -33,7 +33,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="timeoutInSeconds">Optional timeout in seconds</param>
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
-        protected async Task<TResponse> PostAsync<TRequest, TResponse>(
+        public async Task<TResponse> PostAsync<TRequest, TResponse>(
             Uri url, 
             TRequest request, 
             int? timeoutInSeconds = null,
@@ -47,7 +47,7 @@ namespace ApiEventConsumer.Service.Service
                     var authSuccess = await authService.SetAuthorizationHeaderAsync(httpClient);
                     if (!authSuccess)
                     {
-                        throw new InvalidOperationException("Failed to set authorization header");
+                        throw new InvalidOperationException(ApiServiceConstants.FailedToSetAuthorizationHeader);
                     }
                 }
 
@@ -59,7 +59,7 @@ namespace ApiEventConsumer.Service.Service
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
-                return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+                return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
             }
             catch (Exception ex)
             {
@@ -76,7 +76,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="timeoutInSeconds">Optional timeout in seconds</param>
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
-        protected async Task<TResponse> GetAsync<TResponse>(
+        public async Task<TResponse> GetAsync<TResponse>(
             Uri url, 
             int? timeoutInSeconds = null,
             bool requireAuth = true)
@@ -89,7 +89,7 @@ namespace ApiEventConsumer.Service.Service
                     var authSuccess = await authService.SetAuthorizationHeaderAsync(httpClient);
                     if (!authSuccess)
                     {
-                        throw new InvalidOperationException("Failed to set authorization header");
+                        throw new InvalidOperationException(ApiServiceConstants.FailedToSetAuthorizationHeader);
                     }
                 }
 
@@ -101,7 +101,7 @@ namespace ApiEventConsumer.Service.Service
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
-                return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+                return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
             }
             catch (Exception ex)
             {
@@ -120,7 +120,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="timeoutInSeconds">Optional timeout in seconds</param>
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
-        protected async Task<TResponse> PutAsync<TRequest, TResponse>(
+        public async Task<TResponse> PutAsync<TRequest, TResponse>(
             Uri url, 
             TRequest request, 
             int? timeoutInSeconds = null,
@@ -134,7 +134,7 @@ namespace ApiEventConsumer.Service.Service
                     var authSuccess = await authService.SetAuthorizationHeaderAsync(httpClient);
                     if (!authSuccess)
                     {
-                        throw new InvalidOperationException("Failed to set authorization header");
+                        throw new InvalidOperationException(ApiServiceConstants.FailedToSetAuthorizationHeader);
                     }
                 }
 
@@ -146,7 +146,7 @@ namespace ApiEventConsumer.Service.Service
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
-                return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+                return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
             }
             catch (Exception ex)
             {
@@ -163,7 +163,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="timeoutInSeconds">Optional timeout in seconds</param>
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
-        protected async Task<TResponse> DeleteAsync<TResponse>(
+        public async Task<TResponse> DeleteAsync<TResponse>(
             Uri url, 
             int? timeoutInSeconds = null,
             bool requireAuth = true)
@@ -176,7 +176,7 @@ namespace ApiEventConsumer.Service.Service
                     var authSuccess = await authService.SetAuthorizationHeaderAsync(httpClient);
                     if (!authSuccess)
                     {
-                        throw new InvalidOperationException("Failed to set authorization header");
+                        throw new InvalidOperationException(ApiServiceConstants.FailedToSetAuthorizationHeader);
                     }
                 }
 
@@ -188,7 +188,7 @@ namespace ApiEventConsumer.Service.Service
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
-                return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+                return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
             }
             catch (Exception ex)
             {
