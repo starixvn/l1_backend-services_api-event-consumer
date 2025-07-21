@@ -6,5 +6,7 @@ namespace ApiEventConsumer.Core.Models.Promotion
         public string OperatorId { get; set; } = string.Empty;
         public string SiteName { get; set; } = string.Empty;
         public decimal BetAmount { get; set; }
+        public decimal GameId { get; set; }
+
     }
 } 

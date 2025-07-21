@@ -77,7 +77,8 @@ namespace ApiEventConsumer.Subscribers.Bet
                     PlayerId = betSettled.PlayerId?.ToString() ?? string.Empty,
                     OperatorId = betSettled.OperatorId ?? string.Empty,
                     SiteName = betSettled.SiteName ?? string.Empty,
-                    BetAmount = betSettled.ValidBetAmount
+                    BetAmount = betSettled.ValidBetAmount,
+                    GameId = betSettled.GameTypeId
                 };
 
                 var response = await promotionService.UpdateTotalTurnoverAsync(request);
