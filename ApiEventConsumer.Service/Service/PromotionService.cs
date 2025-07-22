@@ -55,11 +55,14 @@ namespace ApiEventConsumer.Service.Service
 
         private async Task<TResponse> PostAsync<TRequest, TResponse>(Uri url, TRequest request)
         {
-            using var response = await httpClient.PostAsJsonAsync(url, request);
+            var timeout = TimeSpan.FromSeconds(appSettings.PromotionApiSettings?.TimeoutInSeconds ?? 10);
+            using var cts = new CancellationTokenSource(timeout);
 
+            using var response = await httpClient.PostAsJsonAsync(url, request, cts.Token);
+            
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<TResponse>();
+            var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
             return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
         }
     }

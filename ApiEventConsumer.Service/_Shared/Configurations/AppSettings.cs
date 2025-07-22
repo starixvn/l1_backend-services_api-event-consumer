@@ -51,6 +51,7 @@
     {
         public string? BaseUrl { get; set; }
         public PromotionEndpoints? Endpoints { get; set; }
+        public int? TimeoutInSeconds { get; set; }
     }
 
     public class PromotionEndpoints
