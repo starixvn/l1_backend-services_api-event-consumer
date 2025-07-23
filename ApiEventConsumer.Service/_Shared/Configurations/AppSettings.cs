@@ -70,30 +70,25 @@
     public class StreamSettings
     {
         public string? Host { get; set; }
-
         public bool Enable { get; set; }
         public string? StreamName { get; set; }
         public string? BetMessages { get; set; }
         public string? BetSettledMessages { get; set; }
-        
-        // Connection configuration properties
-        public int MaxReconnectAttempts { get; set; } = 10;
-        public int ReconnectWaitMs { get; set; } = 10000;
-        public int ShutdownWaitMs { get; set; } = 500;
-        
-        // Consumer configuration
+        public int MaxReconnectAttempts { get; set; }
+        public int ReconnectWaitMs { get; set; }
+        public int ShutdownWaitMs { get; set; }
         public ConsumerSettings? ConsumerSettings { get; set; }
     }
 
     public class ConsumerSettings
     {
-        public int AckWaitMs { get; set; } = 30000;
-        public int MaxAckPending { get; set; } = 50;
-        public int MaxDeliver { get; set; } = 10;
-        public int PullBatchSize { get; set; } = 10;
-        public int PullTimeoutMs { get; set; } = 1000;
-        public int NoMessageDelayMs { get; set; } = 100;
-        public int ErrorRetryDelayMs { get; set; } = 1000;
+        public int AckWaitMs { get; set; }
+        public int MaxAckPending { get; set; }
+        public int MaxDeliver { get; set; }
+        public int PullBatchSize { get; set; }
+        public int PullTimeoutMs { get; set; }
+        public int NoMessageDelayMs { get; set; }
+        public int ErrorRetryDelayMs { get; set; }
     }
 
     public class NotificationApiSettings

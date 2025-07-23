@@ -14,7 +14,6 @@ namespace ApiEventConsumer.Service.Service
 
     public class NatsConnectionService : INatsConnectionService
     {
-        // Consumer naming constants (keep as internal implementation details)
         private const string PullConsumerSuffix = "_PULL";
         private const string ConsumerSuffix = "_CONSUMER";
 
@@ -88,8 +87,6 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-
-
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
             var consumerName = $"{GetConsumerName(subject)}{PullConsumerSuffix}";
@@ -114,8 +111,6 @@ namespace ApiEventConsumer.Service.Service
             var jsManagement = connection.CreateJetStreamManagementContext();
             try
             {
-                // With PULL consumers, we can simply create or update the consumer
-                // The AddOrUpdateConsumer method is idempotent and will handle existing consumers
                 jsManagement.AddOrUpdateConsumer(streamName, consumerConfig);
             }
             catch (NATSJetStreamException ex)
@@ -132,7 +127,6 @@ namespace ApiEventConsumer.Service.Service
             var subscription = jsContext.PullSubscribe(subject, subscribeOptions);
             subscriptions.Add(subscription);
 
-            // Start the message pulling loop
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSources.Add(cancellationTokenSource);
             
@@ -150,7 +144,6 @@ namespace ApiEventConsumer.Service.Service
             }
             catch (OperationCanceledException)
             {
-                // Expected when cancellation is requested
             }
             catch (Exception ex)
             {
@@ -164,10 +157,7 @@ namespace ApiEventConsumer.Service.Service
             
             try
             {
-                // Fetch messages in batches to improve performance
                 subscription.Pull(consumerSettings.PullBatchSize);
-                
-                // Wait for messages to arrive
                 var messages = subscription.Fetch(consumerSettings.PullBatchSize, consumerSettings.PullTimeoutMs);
                 
                 foreach (var message in messages)
@@ -179,7 +169,6 @@ namespace ApiEventConsumer.Service.Service
                     await ProcessPulledMessage(message, handler);
                 }
                 
-                // If no messages were received, wait a bit before trying again
                 if (messages.Count == 0)
                 {
                     await Task.Delay(consumerSettings.NoMessageDelayMs, cancellationToken);
@@ -187,12 +176,10 @@ namespace ApiEventConsumer.Service.Service
             }
             catch (NATSTimeoutException)
             {
-                // Timeout is expected when no messages are available, continue
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                // Wait before retrying to avoid tight error loops
                 await Task.Delay(consumerSettings.ErrorRetryDelayMs, cancellationToken);
             }
         }
@@ -238,8 +225,6 @@ namespace ApiEventConsumer.Service.Service
             return $"{cleanSubject}{ConsumerSuffix}";
         }
 
-
-
         public bool IsHealthy()
         {
             try
@@ -263,13 +248,10 @@ namespace ApiEventConsumer.Service.Service
             }
         }
 
-
-
         public async Task DisconnectAsync()
         {
             try
             {
-                // Cancel all pulling loops
                 foreach (var cancellationTokenSource in cancellationTokenSources)
                 {
                     try
@@ -282,10 +264,8 @@ namespace ApiEventConsumer.Service.Service
                     }
                 }
 
-                // Wait a bit for pulling loops to finish
                 await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs ?? 500);
 
-                // Unsubscribe from all subscriptions
                 foreach (var subscription in subscriptions)
                 {
                     try
@@ -300,7 +280,6 @@ namespace ApiEventConsumer.Service.Service
 
                 subscriptions.Clear();
 
-                // Dispose cancellation token sources
                 foreach (var cancellationTokenSource in cancellationTokenSources)
                 {
                     try
