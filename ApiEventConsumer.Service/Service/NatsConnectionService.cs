@@ -143,8 +143,9 @@ namespace ApiEventConsumer.Service.Service
                     await PullAndProcessMessages(subscription, handler, cancellationToken);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                sentryClient.CaptureMessage($"Message pulling loop cancelled for subscription: {ex.Message}");
             }
             catch (Exception ex)
             {
@@ -175,8 +176,9 @@ namespace ApiEventConsumer.Service.Service
                     await Task.Delay(consumerSettings.NoMessageDelayMs, cancellationToken);
                 }
             }
-            catch (NATSTimeoutException)
+            catch (NATSTimeoutException ex)
             {
+                sentryClient.CaptureMessage($"NATS fetch timeout - no messages available: {ex.Message}", SentryLevel.Debug);
             }
             catch (Exception ex)
             {
@@ -265,7 +267,7 @@ namespace ApiEventConsumer.Service.Service
                     }
                 }
 
-                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs ?? ShutdownWaitMs);
+                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs);
 
                 foreach (var subscription in subscriptions)
                 {
