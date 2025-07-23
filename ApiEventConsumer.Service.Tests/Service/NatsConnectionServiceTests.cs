@@ -19,6 +19,14 @@ namespace ApiEventConsumer.Service.Tests.Service
             var connection = Substitute.For<IConnection>();
             var pullSubscription = Substitute.For<IJetStreamPullSubscription>();
 
+            // Setup StreamSettings mock to provide ShutdownWaitMs
+            var streamSettings = new StreamSettings
+            {
+                ShutdownWaitMs = 500,
+                ConsumerSettings = new ConsumerSettings()
+            };
+            appSettings.StreamSettings.Returns(streamSettings);
+
             var service = new NatsConnectionService(sentryClient, appSettings);
             var subscriptionsField = typeof(NatsConnectionService)
                 .GetField("subscriptions", BindingFlags.NonPublic | BindingFlags.Instance);

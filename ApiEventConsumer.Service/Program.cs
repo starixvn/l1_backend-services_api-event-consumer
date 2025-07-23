@@ -46,13 +46,10 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    if (appSettings.DatabaseSettings != null)
-                    {
-                        services.AddSingleton<IMongoClient>(sp =>
-                            new MongoClient(appSettings.DatabaseSettings.ConnectionString));
-                        services.AddSingleton<IMongoDatabase>(sp =>
-                            sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
-                    }
+                    services.AddSingleton<IMongoClient>(sp =>
+                        new MongoClient(appSettings.DatabaseSettings.ConnectionString));
+                    services.AddSingleton<IMongoDatabase>(sp =>
+                        sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
                     services.AddChatBotServices(appSettings);
                     services.AddSubscriberServices(hostContext.Configuration);
                 })

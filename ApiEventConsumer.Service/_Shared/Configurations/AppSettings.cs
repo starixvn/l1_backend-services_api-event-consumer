@@ -7,8 +7,8 @@
         public double HighStake { get; set; }
         public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
-        public DatabaseSettings? DatabaseSettings { get; set; }
-        public StreamSettings? StreamSettings { get; set; }
+        public DatabaseSettings DatabaseSettings { get; set; }
+        public StreamSettings StreamSettings { get; set; }
         public NotificationApiSettings? NotificationApiSettings { get; set; }
         public AuthApiSettings? AuthApiSettings { get; set; }
     }
@@ -20,25 +20,19 @@
         public double HighStake { get; set; }
         public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
-        public DatabaseSettings? DatabaseSettings { get; set; }
-        public StreamSettings? StreamSettings { get; set; }
+        public DatabaseSettings DatabaseSettings { get; set; } = null!;
+        public StreamSettings StreamSettings { get; set; } = null!;
         public NotificationApiSettings? NotificationApiSettings { get; set; }
         public AuthApiSettings? AuthApiSettings { get; set; }
-
     }
 
     public class ChatBotApiSettings
     {
         public string? Token { get; set; }
-
         public string? Url { get; set; }
-
         public ConversationIds? ConversationIds { get; set; }
-
         public int TimeoutInSeconds { get; set; }
-
         public string? Proxy { get; set; }
-
         public double HighStakeAmount { get; set; }
     }
 
@@ -56,14 +50,14 @@
 
     public class PromotionEndpoints
     {
-        public string UpdateTotalTurnover { get; set; } = "/bonus-wins/update-total-turnover";
-        public string HasBonusWin { get; set; } = "/bonus-wins/has-bonus-win";
+        public string UpdateTotalTurnover { get; set; } = null!;
+        public string HasBonusWin { get; set; } = null!;
     }
 
     public class DatabaseSettings
     {
-        public string? ConnectionString { get; set; }
-        public string? DatabaseName { get; set; }
+        public string ConnectionString { get; set; } = null!;
+        public string DatabaseName { get; set; } = null!;
         public string? Collection { get; set; }
     }
 
@@ -77,7 +71,7 @@
         public int MaxReconnectAttempts { get; set; }
         public int ReconnectWaitMs { get; set; }
         public int ShutdownWaitMs { get; set; }
-        public ConsumerSettings? ConsumerSettings { get; set; }
+        public ConsumerSettings ConsumerSettings { get; set; } = null!;
     }
 
     public class ConsumerSettings
@@ -94,17 +88,17 @@
     public class NotificationApiSettings
     {
         public string? BaseUrl { get; set; }
-        public string? PromotionProgressEndpoint { get; set; } = "/api/promotionProgress";
-        public int TimeoutInSeconds { get; set; } = 30;
+        public string? PromotionProgressEndpoint { get; set; }
+        public int TimeoutInSeconds { get; set; }
     }
 
     public class AuthApiSettings
     {
         public string? BaseUrl { get; set; }
-        public string? TokenEndpoint { get; set; } = "/api/token";
+        public string? TokenEndpoint { get; set; }
         public string? ClientId { get; set; }
         public string? ClientSecret { get; set; }
         public string? Scope { get; set; }
-        public int TimeoutInSeconds { get; set; } = 30;
+        public int TimeoutInSeconds { get; set; }
     }
 }

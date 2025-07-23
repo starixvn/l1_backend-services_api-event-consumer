@@ -16,7 +16,6 @@ namespace ApiEventConsumer.Service.Service
     {
         private const string PullConsumerSuffix = "_PULL";
         private const string ConsumerSuffix = "_CONSUMER";
-        private const int ShutdownWaitMs = 500;
 
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
@@ -37,7 +36,7 @@ namespace ApiEventConsumer.Service.Service
             try
             {
                 var streamSettings = appSettings.StreamSettings;
-                if (streamSettings?.Enable != true)
+                if (!streamSettings.Enable)
                 {
                     return;
                 }
@@ -74,7 +73,7 @@ namespace ApiEventConsumer.Service.Service
             try
             {
                 var streamSettings = appSettings.StreamSettings;
-                if (connection == null || streamSettings?.StreamName == null || subject == null)
+                if (connection == null || streamSettings.StreamName == null || subject == null)
                 {
                     return;
                 }
@@ -91,7 +90,7 @@ namespace ApiEventConsumer.Service.Service
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
             var consumerName = $"{GetConsumerName(subject)}{PullConsumerSuffix}";
-            var consumerSettings = appSettings.StreamSettings?.ConsumerSettings ?? new ConsumerSettings();
+            var consumerSettings = appSettings.StreamSettings.ConsumerSettings;
 
             var consumerConfig = ConsumerConfiguration.Builder()
                     .WithName(consumerName)
@@ -155,7 +154,7 @@ namespace ApiEventConsumer.Service.Service
 
         private async Task PullAndProcessMessages(IJetStreamPullSubscription subscription, Func<object?, MsgHandlerEventArgs, Task<bool>> handler, CancellationToken cancellationToken)
         {
-            var consumerSettings = appSettings.StreamSettings?.ConsumerSettings ?? new ConsumerSettings();
+            var consumerSettings = appSettings.StreamSettings.ConsumerSettings;
             
             try
             {
@@ -255,6 +254,8 @@ namespace ApiEventConsumer.Service.Service
         {
             try
             {
+                int shutdownWaitMs = appSettings.StreamSettings.ShutdownWaitMs;
+
                 foreach (var cancellationTokenSource in cancellationTokenSources)
                 {
                     try
@@ -267,7 +268,7 @@ namespace ApiEventConsumer.Service.Service
                     }
                 }
 
-                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs);
+                await Task.Delay(shutdownWaitMs);
 
                 foreach (var subscription in subscriptions)
                 {
