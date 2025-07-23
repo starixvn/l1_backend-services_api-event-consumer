@@ -45,7 +45,7 @@ namespace ApiEventConsumer.Subscribers.Bet
                     return true;
                 }
 
-                return false;
+                return true;
             }
             catch (Exception ex)
             {

@@ -40,12 +40,12 @@ namespace ApiEventConsumer.Subscribers.Bet
                     await highStakeServices.NotifyHighStake(betCreated, systemType);
                 }
 
-                return true; // Processing successful
+                return true;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                return false; // Processing failed
+                return true;
             }
         }
     }
