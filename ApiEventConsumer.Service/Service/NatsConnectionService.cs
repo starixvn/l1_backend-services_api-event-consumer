@@ -16,6 +16,7 @@ namespace ApiEventConsumer.Service.Service
     {
         private const string PullConsumerSuffix = "_PULL";
         private const string ConsumerSuffix = "_CONSUMER";
+        private const int ShutdownWaitMs = 500;
 
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;
@@ -264,7 +265,7 @@ namespace ApiEventConsumer.Service.Service
                     }
                 }
 
-                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs ?? 500);
+                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs ?? ShutdownWaitMs);
 
                 foreach (var subscription in subscriptions)
                 {
