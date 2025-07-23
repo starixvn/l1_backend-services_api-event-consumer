@@ -25,8 +25,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly INotificationService notificationService;
         private readonly BetSettledSubscriber sut;
 
-        private readonly INotificationService notificationService;
-
         public BetSettledSubscriberTests()
         {
             promotionApiSettings = new PromotionApiSettings
