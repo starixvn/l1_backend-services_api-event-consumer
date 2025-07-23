@@ -14,25 +14,7 @@ namespace ApiEventConsumer.Service.Service
 
     public class NatsConnectionService : INatsConnectionService
     {
-        // Connection constants
-        private const int MaxReconnectAttempts = 10;
-        private const int ReconnectWaitMs = 10000;
-        
-        // Consumer configuration constants
-        private const int ConsumerAckWaitMs = 30000;
-        private const int ConsumerMaxAckPending = 50;
-        private const int ConsumerMaxDeliver = 10;
-        
-        // Pull subscription constants
-        private const int PullBatchSize = 10;
-        private const int PullTimeoutMs = 1000;
-        private const int NoMessageDelayMs = 100;
-        private const int ErrorRetryDelayMs = 1000;
-        
-        // Shutdown constants
-        private const int ShutdownWaitMs = 500;
-        
-        // Consumer naming constants
+        // Consumer naming constants (keep as internal implementation details)
         private const string PullConsumerSuffix = "_PULL";
         private const string ConsumerSuffix = "_CONSUMER";
 
@@ -41,8 +23,6 @@ namespace ApiEventConsumer.Service.Service
         private IConnection? connection;
         private readonly List<IJetStreamPullSubscription> subscriptions;
         private readonly List<CancellationTokenSource> cancellationTokenSources;
-        private string? currentConsumerName;
-        private string? currentStreamName;
 
         public NatsConnectionService(ISentryClient sentryClient, IAppSettings appSettings)
         {
@@ -65,8 +45,8 @@ namespace ApiEventConsumer.Service.Service
                 var options = ConnectionFactory.GetDefaultOptions();
                 options.Url = streamSettings.Host;
                 options.AllowReconnect = true;
-                options.MaxReconnect = MaxReconnectAttempts;
-                options.ReconnectWait = ReconnectWaitMs;
+                options.MaxReconnect = streamSettings.MaxReconnectAttempts;
+                options.ReconnectWait = streamSettings.ReconnectWaitMs;
                 options.DisconnectedEventHandler += (_, _) =>
                 {
                     sentryClient.CaptureException(new Exception("Disconnected from NATS server - attempting to reconnect"));
@@ -113,16 +93,14 @@ namespace ApiEventConsumer.Service.Service
         private void ConfigureSubscription(IJetStream jsContext, string streamName, string subject, Func<object?, MsgHandlerEventArgs, Task<bool>> handler)
         {
             var consumerName = $"{GetConsumerName(subject)}{PullConsumerSuffix}";
-
-            currentConsumerName = consumerName;
-            currentStreamName = streamName;
+            var consumerSettings = appSettings.StreamSettings?.ConsumerSettings ?? new ConsumerSettings();
 
             var consumerConfig = ConsumerConfiguration.Builder()
                     .WithName(consumerName)
-                    .WithAckWait(ConsumerAckWaitMs)
+                    .WithAckWait(consumerSettings.AckWaitMs)
                     .WithDeliverPolicy(DeliverPolicy.All)
-                    .WithMaxAckPending(ConsumerMaxAckPending)
-                    .WithMaxDeliver(ConsumerMaxDeliver)
+                    .WithMaxAckPending(consumerSettings.MaxAckPending)
+                    .WithMaxDeliver(consumerSettings.MaxDeliver)
                     .WithFilterSubject(subject)
                     .WithAckPolicy(AckPolicy.Explicit)
                     .WithReplayPolicy(ReplayPolicy.Instant)
@@ -182,13 +160,15 @@ namespace ApiEventConsumer.Service.Service
 
         private async Task PullAndProcessMessages(IJetStreamPullSubscription subscription, Func<object?, MsgHandlerEventArgs, Task<bool>> handler, CancellationToken cancellationToken)
         {
+            var consumerSettings = appSettings.StreamSettings?.ConsumerSettings ?? new ConsumerSettings();
+            
             try
             {
                 // Fetch messages in batches to improve performance
-                subscription.Pull(PullBatchSize);
+                subscription.Pull(consumerSettings.PullBatchSize);
                 
                 // Wait for messages to arrive
-                var messages = subscription.Fetch(PullBatchSize, PullTimeoutMs);
+                var messages = subscription.Fetch(consumerSettings.PullBatchSize, consumerSettings.PullTimeoutMs);
                 
                 foreach (var message in messages)
                 {
@@ -202,7 +182,7 @@ namespace ApiEventConsumer.Service.Service
                 // If no messages were received, wait a bit before trying again
                 if (messages.Count == 0)
                 {
-                    await Task.Delay(NoMessageDelayMs, cancellationToken);
+                    await Task.Delay(consumerSettings.NoMessageDelayMs, cancellationToken);
                 }
             }
             catch (NATSTimeoutException)
@@ -213,7 +193,7 @@ namespace ApiEventConsumer.Service.Service
             {
                 sentryClient.CaptureException(ex);
                 // Wait before retrying to avoid tight error loops
-                await Task.Delay(ErrorRetryDelayMs, cancellationToken);
+                await Task.Delay(consumerSettings.ErrorRetryDelayMs, cancellationToken);
             }
         }
 
@@ -274,13 +254,6 @@ namespace ApiEventConsumer.Service.Service
                     return false;
                 }
 
-                if (currentStreamName != null && currentConsumerName != null)
-                {
-                    var jsManagement = connection.CreateJetStreamManagementContext();
-                    var consumerInfo = jsManagement.GetConsumerInfo(currentStreamName, currentConsumerName);
-                    return consumerInfo != null;
-                }
-
                 return true;
             }
             catch (Exception ex)
@@ -310,7 +283,7 @@ namespace ApiEventConsumer.Service.Service
                 }
 
                 // Wait a bit for pulling loops to finish
-                await Task.Delay(ShutdownWaitMs);
+                await Task.Delay(appSettings.StreamSettings?.ShutdownWaitMs ?? 500);
 
                 // Unsubscribe from all subscriptions
                 foreach (var subscription in subscriptions)
@@ -349,8 +322,6 @@ namespace ApiEventConsumer.Service.Service
             finally
             {
                 connection?.Dispose();
-                currentConsumerName = null;
-                currentStreamName = null;
             }
         }
     }
