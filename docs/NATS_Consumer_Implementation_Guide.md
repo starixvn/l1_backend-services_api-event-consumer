@@ -2,7 +2,18 @@
 
 ## Overview
 
-This guide explains how to implement NATS JetStream consumers in the API Event Consumer service, following established best practices to avoid common pitfalls like consumer leaks and poor error handling.
+This guide explains how to implement NATS JetStream consumers in the API Event Consumer service, following established best practices to avoid common pitfalls like consumer leaks, poor error handling, and ACK timeout issues.
+
+## Quick Reference: Timeout Settings
+
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| **NATS ACK Wait** | 30 seconds | Maximum time for message acknowledgment |
+| **HTTP Timeouts** | 10-25 seconds | Must be < NATS ACK wait time |
+| **Database Timeouts** | 5-10 seconds | MongoDB query timeouts |
+| **Message Processing** | < 25 seconds | Safe processing window |
+
+⚠️ **Critical Rule**: All operations in message handlers must complete within 30 seconds or messages will be redelivered.
 
 ## Current Implementation Architecture
 
@@ -394,6 +405,122 @@ public class StreamSettings
 }
 ```
 
+## HTTP Service Timeout Best Practices
+
+### ⚠️ Critical: Avoid ACK Timeout Issues
+
+**NATS ACK Wait Time: 30 seconds**
+
+All HTTP operations in message handlers MUST complete within this window to prevent message redelivery.
+
+### HTTP Service Timeout Configuration
+
+```csharp
+// ✅ Good: Timeout less than NATS ACK wait time
+private async Task<TResponse> PostAsync<TRequest, TResponse>(Uri url, TRequest request)
+{
+    var timeout = TimeSpan.FromSeconds(appSettings.ApiSettings?.TimeoutInSeconds ?? 10);
+    using var cts = new CancellationTokenSource(timeout);
+
+    using var response = await httpClient.PostAsJsonAsync(url, request, cts.Token);
+    response.EnsureSuccessStatusCode();
+
+    var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
+    return result ?? throw new InvalidOperationException($"Failed to deserialize response from {url}");
+}
+```
+
+### Required Timeout Settings by Service Type
+
+| Service Type | Recommended Timeout | Buffer vs NATS | Reasoning |
+|-------------|-------------------|----------------|-----------|
+| **Critical APIs** | 10 seconds | 20s buffer | Fast failure detection |
+| **Secondary APIs** | 15 seconds | 15s buffer | Allow reasonable response time |
+| **Notification APIs** | 25 seconds | 5s buffer | Last resort before NATS timeout |
+
+### Configuration Pattern
+
+```csharp
+// In AppSettings.cs
+public class PromotionApiSettings
+{
+    public string? BaseUrl { get; set; }
+    public PromotionEndpoints? Endpoints { get; set; }
+    public int? TimeoutInSeconds { get; set; }  // ✅ Always include timeout option
+}
+
+// In appsettings.json
+{
+  "PromotionApiSettings": {
+    "BaseUrl": "https://api.example.com",
+    "TimeoutInSeconds": 10,  // ✅ Set explicit timeout
+    "Endpoints": {
+      "UpdateTotalTurnover": "/bonus-wins/update-total-turnover"
+    }
+  }
+}
+```
+
+### Sequential HTTP Call Mitigation
+
+```csharp
+// ❌ Wrong: Sequential calls can exceed NATS timeout
+public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+{
+    await promotionService.UpdateTotalTurnoverAsync(request);    // 10s
+    await notificationService.SendPromotionProgressAsync(req);   // 25s
+    // Total: 35s > 30s NATS timeout = MESSAGE REDELIVERY
+}
+
+// ✅ Better: Parallel execution
+public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+{
+    var promotionTask = promotionService.UpdateTotalTurnoverAsync(request);
+    var notificationTask = notificationService.SendPromotionProgressAsync(req);
+    
+    await Task.WhenAll(promotionTask, notificationTask);
+    // Total: max(10s, 25s) = 25s < 30s NATS timeout = SUCCESS
+}
+
+// ✅ Best: Fail-fast with timeout monitoring
+public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+{
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+    
+    try
+    {
+        await ProcessWithTimeout(args, cts.Token);
+        return true;
+    }
+    catch (OperationCanceledException)
+    {
+        sentryClient.CaptureMessage("Message processing timeout exceeded");
+        return false; // NAK - will retry
+    }
+}
+```
+
+## Database Operation Timeouts
+
+### MongoDB Query Timeouts
+
+```csharp
+// ✅ Add timeout to MongoDB operations
+public async Task<string> GetCharacterNameAsync(string memberId)
+{
+    var options = new FindOptions<AccountEntity> 
+    { 
+        MaxTime = TimeSpan.FromSeconds(5)  // Fail fast on slow DB
+    };
+    
+    var account = await accountRepository.Collection()
+        .Find(user => user.Local!.MemberId == memberId, options)
+        .FirstOrDefaultAsync();
+        
+    return account?.Name ?? string.Empty;
+}
+```
+
 ## Best Practices Checklist
 
 ### ✅ Consumer Implementation
@@ -412,12 +539,22 @@ public class StreamSettings
 - [ ] Don't throw unhandled exceptions from handlers
 - [ ] Implement circuit breakers for external service calls
 
+### ✅ Timeout Management
+
+- [ ] **CRITICAL**: All HTTP calls MUST have timeouts < 30 seconds
+- [ ] Configure explicit timeouts for all external service calls
+- [ ] Add MongoDB query timeouts (5-10 seconds recommended)
+- [ ] Use parallel execution for independent operations
+- [ ] Monitor and alert on timeout occurrences
+- [ ] Test timeout scenarios in integration tests
+
 ### ✅ Configuration
 
 - [ ] Add new subjects to `StreamSettings` class
 - [ ] Use environment-specific appsettings files
 - [ ] Set appropriate retention policies per environment
 - [ ] Configure monitoring and alerting for consumer health
+- [ ] **NEW**: Include `TimeoutInSeconds` in all API settings classes
 
 ### ✅ Testing
 
@@ -426,6 +563,7 @@ public class StreamSettings
 - [ ] Test both success and failure scenarios
 - [ ] Verify message deserialization handling
 - [ ] Test configuration validation
+- [ ] **NEW**: Test timeout scenarios and recovery
 
 ## Monitoring and Troubleshooting
 
@@ -457,6 +595,82 @@ public bool IsConsumerHealthy(string consumerName)
 | **Infinite Retries** | Same message failing repeatedly | Implement proper error handling, return `false` |
 | **Memory Issues** | High memory usage | Use `StorageType.File` and appropriate limits |
 | **Connection Drops** | Frequent disconnections | Configure reconnection settings and monitoring |
+| **⚠️ ACK Timeout** | Messages redelivered multiple times | Configure HTTP timeouts < 30s, use parallel calls |
+| **⚠️ Slow HTTP APIs** | Processing takes >30 seconds | Add explicit timeouts to all HTTP services |
+| **⚠️ Database Hangs** | MongoDB queries never return | Add `MaxTime` to FindOptions |
+| **⚠️ Sequential Delays** | Multiple API calls accumulate time | Use `Task.WhenAll()` for parallel execution |
+
+### Timeout-Specific Troubleshooting
+
+#### Identifying Timeout Issues
+
+```csharp
+// Add timeout monitoring to your subscribers
+public async Task<bool> OnMessageReceived(object sender, MsgHandlerEventArgs args)
+{
+    var stopwatch = Stopwatch.StartNew();
+    
+    try
+    {
+        var result = await ProcessMessage(args);
+        return result;
+    }
+    finally
+    {
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds > 25000) // 25 seconds
+        {
+            sentryClient.CaptureMessage(
+                $"Message processing took {stopwatch.ElapsedMilliseconds}ms - approaching NATS timeout",
+                SentryLevel.Warning);
+        }
+    }
+}
+```
+
+#### NATS Consumer Health Monitoring
+
+```csharp
+// Monitor consumer delivery metrics
+public ConsumerHealthStatus GetConsumerHealth(string consumerName)
+{
+    try
+    {
+        var jsManagement = connection.CreateJetStreamManagementContext();
+        var consumerInfo = jsManagement.GetConsumerInfo(currentStreamName, consumerName);
+        
+        return new ConsumerHealthStatus
+        {
+            IsHealthy = consumerInfo != null,
+            PendingMessages = consumerInfo?.NumPending ?? 0,
+            AckPendingCount = consumerInfo?.NumAckPending ?? 0,
+            RedeliveredCount = consumerInfo?.NumRedelivered ?? 0,
+            LastDelivery = consumerInfo?.Delivered?.Last ?? DateTime.MinValue
+        };
+    }
+    catch (Exception ex)
+    {
+        sentryClient.CaptureException(ex);
+        return new ConsumerHealthStatus { IsHealthy = false };
+    }
+}
+
+public class ConsumerHealthStatus
+{
+    public bool IsHealthy { get; set; }
+    public ulong PendingMessages { get; set; }
+    public ulong AckPendingCount { get; set; }
+    public ulong RedeliveredCount { get; set; }
+    public DateTime LastDelivery { get; set; }
+}
+```
+
+#### Warning Signs to Monitor
+
+- **High AckPending Count (>10)**: Messages taking too long to process
+- **Increasing Redelivered Count**: Messages consistently failing or timing out  
+- **Growing Pending Messages**: Consumer can't keep up with message rate
+- **No Recent Deliveries**: Consumer may be stuck or disconnected
 
 ## Migration Guide for Existing Consumers
 
@@ -470,6 +684,7 @@ If you have existing consumers that don't follow these patterns:
 
 ---
 
-**Document Version**: 1.0  
+**Document Version**: 1.1  
 **Last Updated**: January 2025  
-**Author**: Development Team 
+**Author**: Development Team  
+**Changes in v1.1**: Added HTTP timeout best practices, database timeout configuration, and timeout-specific troubleshooting guidelines 
