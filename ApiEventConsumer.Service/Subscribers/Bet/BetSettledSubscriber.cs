@@ -49,11 +49,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(betSettled.PromotionId))
-                {
-                    await HandlePromotionalTicket(betSettled);
-                }
-
+                await HandlePromotionalTicket(betSettled);
                 HandleNormalTicket(betSettled);
             }
             catch (Exception ex)
