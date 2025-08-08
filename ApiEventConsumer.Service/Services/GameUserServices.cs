@@ -2,7 +2,7 @@
 using ApiEventConsumer.Database;
 using MongoDB.Driver;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IGameUserService
     {

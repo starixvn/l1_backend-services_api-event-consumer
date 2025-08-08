@@ -2,9 +2,9 @@
 using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Subscribers;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
-    public class ConfigurationServices 
+    public class ConfigurationServices
     {
         public IConfiguration Configuration { get; }
         public ICacheManager Cache { get; }
@@ -15,7 +15,7 @@ namespace ApiEventConsumer.Service.Service
         public ConfigurationServices(
             IConfiguration configuration,
             ICacheManager cache,
-            IAppSettings appSettings, 
+            IAppSettings appSettings,
             IGameUserService gameUserService,
             IGeneralGameSettingService generalGameSettingService,
             IChatBotApi chatBotApi)

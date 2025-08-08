@@ -4,41 +4,33 @@ using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Constants;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
-    public class AuthService : IAuthService
+    public class AuthService(HttpClient httpClient, IAppSettings appSettings, ISentryClient sentryClient) : IAuthService
     {
         private const int TokenExpiryBufferSeconds = 300; // 5 minutes buffer for token expiry
 
-        private readonly HttpClient httpClient;
-        private readonly IAppSettings appSettings;
-        private readonly ISentryClient sentryClient;
+        private readonly HttpClient httpClient = httpClient;
+        private readonly IAppSettings appSettings = appSettings;
+        private readonly ISentryClient sentryClient = sentryClient;
         private string? cachedToken;
         private DateTime tokenExpiry = DateTime.MinValue;
-
-        public AuthService(HttpClient httpClient, IAppSettings appSettings, ISentryClient sentryClient)
-        {
-            this.httpClient = httpClient;
-            this.appSettings = appSettings;
-            this.sentryClient = sentryClient;
-        }
 
         public async Task<string?> GetAuthTokenAsync()
         {
             try
             {
-                // Check if cached token is still valid
+                if (appSettings.AuthApiSettings == null ||
+                   string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.BaseUrl) ||
+                   string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.ClientId) ||
+                   string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.ClientSecret))
+                {
+                    throw new InvalidOperationException("AuthApiSettings are not properly configured");
+                }
+
                 if (!string.IsNullOrEmpty(cachedToken) && DateTime.UtcNow < tokenExpiry)
                 {
                     return cachedToken;
-                }
-
-                if (appSettings.AuthApiSettings == null ||
-                    string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.BaseUrl) ||
-                    string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.ClientId) ||
-                    string.IsNullOrWhiteSpace(appSettings.AuthApiSettings.ClientSecret))
-                {
-                    throw new InvalidOperationException("AuthApiSettings are not properly configured");
                 }
 
                 // Prepare auth request using form data (OAuth2 standard)
@@ -100,7 +92,7 @@ namespace ApiEventConsumer.Service.Service
 
             using var content = new FormUrlEncodedContent(formData);
             using var response = await httpClient.PostAsync(url, content, cts.Token);
-            
+
             response.EnsureSuccessStatusCode();
 
             // Log raw response for debugging
@@ -111,4 +103,4 @@ namespace ApiEventConsumer.Service.Service
             return result ?? throw new InvalidOperationException(string.Format(ApiServiceConstants.FailedToDeserializeResponse, url));
         }
     }
-} 
+}

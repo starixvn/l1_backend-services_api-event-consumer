@@ -1,4 +1,4 @@
-﻿using ApiEventConsumer.Service.Service;
+﻿using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using NATS.Client;
 using NSubstitute;

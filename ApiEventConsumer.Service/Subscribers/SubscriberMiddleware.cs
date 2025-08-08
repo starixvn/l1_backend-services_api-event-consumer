@@ -4,7 +4,7 @@ using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
 
@@ -18,7 +18,7 @@ namespace ApiEventConsumer.Service.Subscribers
             {
                 scope.SetTag("service_name", "ApiEventConsumer");
             });
-            
+
             services.AddMemoryCache();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
@@ -52,7 +52,7 @@ namespace ApiEventConsumer.Service.Subscribers
             var natsService = serviceProvider.GetRequiredService<INatsConnectionService>();
             var betSubscriber = serviceProvider.GetRequiredService<BetSubscriber>();
             var betSettledSubscriber = serviceProvider.GetRequiredService<BetSettledSubscriber>();
-            
+
             var manager = new SubscriberManager(natsService);
             manager.RegisterSubscriber(betSubscriber);
             manager.RegisterSubscriber(betSettledSubscriber);

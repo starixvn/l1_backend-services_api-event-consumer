@@ -1,7 +1,7 @@
 ﻿using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IGeneralGameSettingService
     {

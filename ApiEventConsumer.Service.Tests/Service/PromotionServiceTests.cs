@@ -4,7 +4,7 @@ using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.Promotion;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
@@ -58,7 +58,7 @@ namespace ApiEventConsumer.Service.Tests.Service
 
             var mockHandler = new MockHttpMessageHandler();
             mockHandler.SetupResponse(HttpStatusCode.OK, JsonSerializer.Serialize(expectedResponse));
-            
+
             var httpClient = new HttpClient(mockHandler);
             var service = new PromotionService(httpClient, _appSettings, _sentryClient);
 
@@ -88,7 +88,7 @@ namespace ApiEventConsumer.Service.Tests.Service
 
             var mockHandler = new MockHttpMessageHandler();
             mockHandler.SetupResponse(HttpStatusCode.BadRequest, "Bad Request");
-            
+
             var httpClient = new HttpClient(mockHandler);
             var service = new PromotionService(httpClient, _appSettings, _sentryClient);
 
@@ -116,7 +116,7 @@ namespace ApiEventConsumer.Service.Tests.Service
 
             var mockHandler = new MockHttpMessageHandler();
             mockHandler.SetupException(new HttpRequestException("Network error"));
-            
+
             var httpClient = new HttpClient(mockHandler);
             var service = new PromotionService(httpClient, _appSettings, _sentryClient);
 
@@ -145,7 +145,7 @@ namespace ApiEventConsumer.Service.Tests.Service
 
             var mockHandler = new MockHttpMessageHandler();
             mockHandler.SetupResponse(HttpStatusCode.OK, "null");
-            
+
             var httpClient = new HttpClient(mockHandler);
             var service = new PromotionService(httpClient, _appSettings, _sentryClient);
 
@@ -195,4 +195,4 @@ namespace ApiEventConsumer.Service.Tests.Service
             return Task.FromResult(response);
         }
     }
-} 
+}

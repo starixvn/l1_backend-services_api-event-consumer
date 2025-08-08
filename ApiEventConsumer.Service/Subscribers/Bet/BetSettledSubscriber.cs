@@ -4,32 +4,24 @@ using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using NATS.Client;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSettledSubscriber : IEventSubscriber
+    public class BetSettledSubscriber(
+        ISentryClient sentryClient,
+        IAppSettings appSettings,
+        IPromotionService promotionService,
+        INotificationService notificationService) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 3.0m;
 
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
-        private readonly IPromotionService promotionService;
-        private readonly INotificationService notificationService;
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
+        private readonly IPromotionService promotionService = promotionService;
+        private readonly INotificationService notificationService = notificationService;
 
-        public BetSettledSubscriber(
-            ISentryClient sentryClient, 
-            IAppSettings appSettings, 
-            IPromotionService promotionService, 
-            INotificationService notificationService)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = appSettings;
-            this.promotionService = promotionService;
-            this.notificationService = notificationService;
-        }
- 
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
         public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
@@ -42,7 +34,6 @@ namespace ApiEventConsumer.Subscribers.Bet
                 if (betSettled != null)
                 {
                     await ProcessBetSettled(betSettled);
-                    return true;
                 }
 
                 return true;
@@ -58,7 +49,10 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                await HandlePromotionalTicket(betSettled);
+                if (!string.IsNullOrWhiteSpace(betSettled.PromotionId))
+                {
+                    await HandlePromotionalTicket(betSettled);
+                }
 
                 HandleNormalTicket(betSettled);
             }
@@ -82,9 +76,8 @@ namespace ApiEventConsumer.Subscribers.Bet
                 };
 
                 var response = await promotionService.UpdateTotalTurnoverAsync(request);
-                
-                // Send notification if promotion service was successful
-                if (String.IsNullOrEmpty(response.ErrorCode))
+
+                if (string.IsNullOrEmpty(response.ErrorCode))
                 {
                     await NotifyProgress(betSettled, response);
                 }
@@ -134,8 +127,8 @@ namespace ApiEventConsumer.Subscribers.Bet
                 var operatorId = betSettled.OperatorId ?? string.Empty;
                 var siteName = betSettled.SiteName ?? string.Empty;
 
-                if (string.IsNullOrWhiteSpace(playerId) || 
-                    string.IsNullOrWhiteSpace(operatorId) || 
+                if (string.IsNullOrWhiteSpace(playerId) ||
+                    string.IsNullOrWhiteSpace(operatorId) ||
                     string.IsNullOrWhiteSpace(siteName))
                 {
                     sentryClient.CaptureMessage($"Missing required fields for notification: PlayerId={playerId}, OperatorId={operatorId}, SiteName={siteName}");

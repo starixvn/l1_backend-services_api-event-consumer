@@ -4,7 +4,7 @@ using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Constants;
 using Sentry;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IPromotionService
     {
@@ -59,7 +59,7 @@ namespace ApiEventConsumer.Service.Service
             using var cts = new CancellationTokenSource(timeout);
 
             using var response = await httpClient.PostAsJsonAsync(url, request, cts.Token);
-            
+
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);

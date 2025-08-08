@@ -2,7 +2,7 @@ using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.Promotion;
 using Sentry;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface INotificationService
     {
@@ -17,7 +17,7 @@ namespace ApiEventConsumer.Service.Service
 
         public NotificationService(
             IBaseApiService baseApiService,
-            IAppSettings appSettings, 
+            IAppSettings appSettings,
             ISentryClient sentryClient)
         {
             this._baseApiService = baseApiService;
@@ -41,16 +41,16 @@ namespace ApiEventConsumer.Service.Service
 
                 // Send request using base class method with automatic authentication
                 var result = await _baseApiService.PostAsync<PromotionProgressRequest, PromotionProgressResponse>(
-                    url, 
-                    request, 
+                    url,
+                    request,
                     appSettings.NotificationApiSettings.TimeoutInSeconds);
-                
+
                 return result;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                
+
                 return new PromotionProgressResponse
                 {
                     Success = false,
@@ -60,4 +60,4 @@ namespace ApiEventConsumer.Service.Service
             }
         }
     }
-} 
+}

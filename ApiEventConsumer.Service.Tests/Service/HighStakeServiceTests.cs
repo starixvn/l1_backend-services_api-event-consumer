@@ -8,7 +8,7 @@ using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Core.Models.NatMessage;
 using MongoDB.Driver;
 using ApiEventConsumer.Core.Constants;
@@ -96,8 +96,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             result.Should().NotBeNull();
             await _chatBotApi.DidNotReceive().ForwardMessage(
-                Arg.Any<string>(), 
-                Arg.Any<string>(), 
+                Arg.Any<string>(),
+                Arg.Any<string>(),
                 Arg.Any<string>()
             );
         }
@@ -349,8 +349,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Assert
             Assert.NotNull(result);
             await _chatBotApi.DidNotReceive().ForwardMessage(
-                Arg.Any<string>(), 
-                Arg.Any<string>(), 
+                Arg.Any<string>(),
+                Arg.Any<string>(),
                 Arg.Any<string>()
             );
         }

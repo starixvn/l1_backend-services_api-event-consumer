@@ -1,4 +1,4 @@
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IBaseApiService
     {
@@ -13,8 +13,8 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         Task<TResponse> PostAsync<TRequest, TResponse>(
-            Uri url, 
-            TRequest request, 
+            Uri url,
+            TRequest request,
             int? timeoutInSeconds = null,
             bool requireAuth = true);
 
@@ -27,7 +27,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         Task<TResponse> GetAsync<TResponse>(
-            Uri url, 
+            Uri url,
             int? timeoutInSeconds = null,
             bool requireAuth = true);
 
@@ -42,8 +42,8 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         Task<TResponse> PutAsync<TRequest, TResponse>(
-            Uri url, 
-            TRequest request, 
+            Uri url,
+            TRequest request,
             int? timeoutInSeconds = null,
             bool requireAuth = true);
 
@@ -56,8 +56,8 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         Task<TResponse> DeleteAsync<TResponse>(
-            Uri url, 
+            Uri url,
             int? timeoutInSeconds = null,
             bool requireAuth = true);
     }
-} 
+}

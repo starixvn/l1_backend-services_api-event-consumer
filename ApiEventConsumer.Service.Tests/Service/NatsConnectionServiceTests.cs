@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using NSubstitute;
 using NATS.Client;
 using NATS.Client.JetStream;
@@ -51,7 +51,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Arrange
             var sentryClient = Substitute.For<ISentryClient>();
             var appSettings = Substitute.For<IAppSettings>();
-            
+
             var streamSettings = new StreamSettings
             {
                 Enable = false,
@@ -59,7 +59,7 @@ namespace ApiEventConsumer.Service.Tests.Service
                 StreamName = "test_stream",
                 BetMessages = "bet.created"
             };
-            
+
             appSettings.StreamSettings.Returns(streamSettings);
 
             // Act
@@ -79,7 +79,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             var connection = Substitute.For<IConnection>();
             var jsContext = Substitute.For<IJetStream>();
             var jsManagement = Substitute.For<IJetStreamManagement>();
-            
+
             var streamSettings = new StreamSettings
             {
                 Enable = true,
@@ -100,9 +100,9 @@ namespace ApiEventConsumer.Service.Tests.Service
             Assert.NotNull(streamSettings.BetMessages);
 
             // Act & Assert - Should not throw
-            var exception = Record.Exception(() => 
+            var exception = Record.Exception(() =>
                 service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), streamSettings.BetMessages));
-            
+
             Assert.Null(exception);
         }
 
@@ -128,7 +128,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             var sentryClient = Substitute.For<ISentryClient>();
             var appSettings = Substitute.For<IAppSettings>();
             var connection = Substitute.For<IConnection>();
-            
+
             var service = new NatsConnectionService(sentryClient, appSettings);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -150,7 +150,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             var sentryClient = Substitute.For<ISentryClient>();
             var appSettings = Substitute.For<IAppSettings>();
             var connection = Substitute.For<IConnection>();
-            
+
             var service = new NatsConnectionService(sentryClient, appSettings);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -170,11 +170,11 @@ namespace ApiEventConsumer.Service.Tests.Service
         {
             // Create a completely isolated test to avoid any NSubstitute state pollution
             var service = CreateNatsConnectionServiceWithMocks(out var connection, out var pullSubscription, out var _, out var _);
-            
+
             // Configure mock behaviors
             connection.IsClosed().Returns(false);
             pullSubscription.IsValid.Returns(false);
-            
+
             // Setup the service with the mocked connection and subscription
             SetupServiceWithConnectionAndSubscriptions(service, connection, new List<IJetStreamPullSubscription> { pullSubscription });
 
@@ -195,7 +195,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             appSettings = Substitute.For<IAppSettings>();
             connection = Substitute.For<IConnection>();
             pullSubscription = Substitute.For<IJetStreamPullSubscription>();
-            
+
             return new NatsConnectionService(sentryClient, appSettings);
         }
 
@@ -221,7 +221,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             var appSettings = Substitute.For<IAppSettings>();
             var connection = Substitute.For<IConnection>();
             var pullSubscription = Substitute.For<IJetStreamPullSubscription>();
-            
+
             var service = new NatsConnectionService(sentryClient, appSettings);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);

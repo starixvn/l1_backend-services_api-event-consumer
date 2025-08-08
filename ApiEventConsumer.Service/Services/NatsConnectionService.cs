@@ -2,7 +2,7 @@ using ApiEventConsumer._Shared.Configurations;
 using NATS.Client;
 using NATS.Client.JetStream;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface INatsConnectionService
     {
@@ -129,7 +129,7 @@ namespace ApiEventConsumer.Service.Service
 
             var cancellationTokenSource = new CancellationTokenSource();
             cancellationTokenSources.Add(cancellationTokenSource);
-            
+
             _ = Task.Run(async () => await StartMessagePullingLoop(subscription, handler, cancellationTokenSource.Token));
         }
 
@@ -155,21 +155,22 @@ namespace ApiEventConsumer.Service.Service
         private async Task PullAndProcessMessages(IJetStreamPullSubscription subscription, Func<object?, MsgHandlerEventArgs, Task<bool>> handler, CancellationToken cancellationToken)
         {
             var consumerSettings = appSettings.StreamSettings.ConsumerSettings;
-            
+
             try
             {
                 subscription.Pull(consumerSettings.PullBatchSize);
                 var messages = subscription.Fetch(consumerSettings.PullBatchSize, consumerSettings.PullTimeoutMs);
-                
+
                 foreach (var message in messages)
                 {
-                    if (cancellationToken.IsCancellationRequested){
+                    if (cancellationToken.IsCancellationRequested)
+                    {
                         return;
                     }
 
                     await ProcessPulledMessage(message, handler);
                 }
-                
+
                 if (messages.Count == 0)
                 {
                     await Task.Delay(consumerSettings.NoMessageDelayMs, cancellationToken);
@@ -198,7 +199,7 @@ namespace ApiEventConsumer.Service.Service
 
                 var args = new MsgHandlerEventArgs(message);
                 bool success = await handler(null, args);
-                
+
                 if (!success)
                 {
                     message.Nak();

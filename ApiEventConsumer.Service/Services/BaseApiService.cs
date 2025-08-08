@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Constants;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public class BaseApiService : IBaseApiService
     {
@@ -12,8 +12,8 @@ namespace ApiEventConsumer.Service.Service
         protected readonly IAuthService authService;
 
         public BaseApiService(
-            HttpClient httpClient, 
-            IAppSettings appSettings, 
+            HttpClient httpClient,
+            IAppSettings appSettings,
             ISentryClient sentryClient,
             IAuthService authService)
         {
@@ -34,8 +34,8 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         public async Task<TResponse> PostAsync<TRequest, TResponse>(
-            Uri url, 
-            TRequest request, 
+            Uri url,
+            TRequest request,
             int? timeoutInSeconds = null,
             bool requireAuth = true)
         {
@@ -55,7 +55,7 @@ namespace ApiEventConsumer.Service.Service
                 using var cts = new CancellationTokenSource(timeout);
 
                 using var response = await httpClient.PostAsJsonAsync(url, request, cts.Token);
-                
+
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
@@ -77,7 +77,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         public async Task<TResponse> GetAsync<TResponse>(
-            Uri url, 
+            Uri url,
             int? timeoutInSeconds = null,
             bool requireAuth = true)
         {
@@ -97,7 +97,7 @@ namespace ApiEventConsumer.Service.Service
                 using var cts = new CancellationTokenSource(timeout);
 
                 using var response = await httpClient.GetAsync(url, cts.Token);
-                
+
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
@@ -121,8 +121,8 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         public async Task<TResponse> PutAsync<TRequest, TResponse>(
-            Uri url, 
-            TRequest request, 
+            Uri url,
+            TRequest request,
             int? timeoutInSeconds = null,
             bool requireAuth = true)
         {
@@ -142,7 +142,7 @@ namespace ApiEventConsumer.Service.Service
                 using var cts = new CancellationTokenSource(timeout);
 
                 using var response = await httpClient.PutAsJsonAsync(url, request, cts.Token);
-                
+
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
@@ -164,7 +164,7 @@ namespace ApiEventConsumer.Service.Service
         /// <param name="requireAuth">Whether authentication is required (default: true)</param>
         /// <returns>Response object</returns>
         public async Task<TResponse> DeleteAsync<TResponse>(
-            Uri url, 
+            Uri url,
             int? timeoutInSeconds = null,
             bool requireAuth = true)
         {
@@ -184,7 +184,7 @@ namespace ApiEventConsumer.Service.Service
                 using var cts = new CancellationTokenSource(timeout);
 
                 using var response = await httpClient.DeleteAsync(url, cts.Token);
-                
+
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<TResponse>(cancellationToken: cts.Token);
@@ -197,4 +197,4 @@ namespace ApiEventConsumer.Service.Service
             }
         }
     }
-} 
+}

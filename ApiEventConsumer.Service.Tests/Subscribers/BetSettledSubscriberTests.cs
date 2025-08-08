@@ -7,7 +7,7 @@ using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
 using NATS.Client;

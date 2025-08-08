@@ -4,7 +4,7 @@
     {
         public int Port { get; set; }
         public string? SystemType { get; set; }
-        public double HighStake { get; set; }
+        public decimal HighStake { get; set; }
         public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings DatabaseSettings { get; set; }
@@ -17,7 +17,7 @@
     {
         public int Port { get; set; }
         public string? SystemType { get; set; }
-        public double HighStake { get; set; }
+        public decimal HighStake { get; set; }
         public PromotionApiSettings? PromotionApiSettings { get; set; }
         public ChatBotApiSettings? ChatBotApiSettings { get; set; }
         public DatabaseSettings DatabaseSettings { get; set; } = null!;

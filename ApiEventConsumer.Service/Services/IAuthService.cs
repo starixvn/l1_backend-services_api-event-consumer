@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IAuthService
     {
@@ -22,4 +22,4 @@ namespace ApiEventConsumer.Service.Service
         /// </summary>
         void ClearCachedToken();
     }
-} 
+}

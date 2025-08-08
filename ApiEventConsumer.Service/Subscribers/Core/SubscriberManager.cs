@@ -1,4 +1,4 @@
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 
 namespace ApiEventConsumer.Subscribers
 {
@@ -11,20 +11,20 @@ namespace ApiEventConsumer.Subscribers
         {
             this.natsService = natsService;
             subscribers = [];
-            
+
             natsService.InitializeConnection();
         }
 
         public void RegisterSubscriber(IEventSubscriber subscriber)
         {
-            subscribers.Add(subscriber);          
+            subscribers.Add(subscriber);
         }
 
         public void RegisterAllSubscribers()
         {
             foreach (var subscriber in subscribers)
             {
-                natsService.ConfigureJetStream((sender, args) => subscriber.OnMessageReceived(sender, args), subscriber.SubjectName);
+                natsService.ConfigureJetStream(subscriber.OnMessageReceived, subscriber.SubjectName);
             }
         }
 
@@ -33,4 +33,4 @@ namespace ApiEventConsumer.Subscribers
             return subscribers.OfType<T>().FirstOrDefault() ?? throw new InvalidOperationException($"No subscriber of type {typeof(T).Name} found.");
         }
     }
-} 
+}
