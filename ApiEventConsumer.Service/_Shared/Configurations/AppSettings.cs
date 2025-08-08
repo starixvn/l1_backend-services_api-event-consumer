@@ -39,6 +39,7 @@
     public class ConversationIds
     {
         public string? HighStake { get; set; }
+        public string? HighMultiplier { get; set; }
     }
 
     public class PromotionApiSettings

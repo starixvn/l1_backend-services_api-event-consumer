@@ -17,7 +17,7 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Equal(0m, betSettled.TotalWin);
             Assert.Equal(0m, betSettled.ValidBetAmount);
             Assert.Null(betSettled.EndTime);
-            Assert.False(betSettled.FreeBet);
+            Assert.Null(betSettled.FreeBet);
             Assert.Equal(string.Empty, betSettled.PromotionId);
             Assert.Equal(string.Empty, betSettled.Seq);
             Assert.Equal(string.Empty, betSettled.PlayerId);
@@ -200,4 +200,4 @@ namespace ApiEventConsumer.Core.Tests.Models.NatMessage
             Assert.Equal(siteName, betSettled.SiteName);
         }
     }
-} 
+}

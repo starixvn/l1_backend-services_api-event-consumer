@@ -4,28 +4,19 @@ using ApiEventConsumer.Subscribers;
 
 namespace ApiEventConsumer.Services
 {
-    public class ConfigurationServices
+    public class ConfigurationServices(
+        IConfiguration configuration,
+        ICacheManager cache,
+        IAppSettings appSettings,
+        IGameUserService gameUserService,
+        IGeneralGameSettingService generalGameSettingService,
+        IChatBotApi chatBotApi)
     {
-        public IConfiguration Configuration { get; }
-        public ICacheManager Cache { get; }
-        public IAppSettings AppSettings { get; }
-        public IGameUserService GameUserService { get; }
-        public IGeneralGameSettingService GeneralGameSettingService { get; }
-        public IChatBotApi ChatBotApi { get; }
-        public ConfigurationServices(
-            IConfiguration configuration,
-            ICacheManager cache,
-            IAppSettings appSettings,
-            IGameUserService gameUserService,
-            IGeneralGameSettingService generalGameSettingService,
-            IChatBotApi chatBotApi)
-        {
-            Configuration = configuration;
-            Cache = cache;
-            AppSettings = appSettings;
-            GameUserService = gameUserService;
-            GeneralGameSettingService = generalGameSettingService;
-            ChatBotApi = chatBotApi;
-        }
+        public IConfiguration Configuration { get; } = configuration;
+        public ICacheManager Cache { get; } = cache;
+        public IAppSettings AppSettings { get; } = appSettings;
+        public IGameUserService GameUserService { get; } = gameUserService;
+        public IGeneralGameSettingService GeneralGameSettingService { get; } = generalGameSettingService;
+        public IChatBotApi ChatBotApi { get; } = chatBotApi;
     }
 }

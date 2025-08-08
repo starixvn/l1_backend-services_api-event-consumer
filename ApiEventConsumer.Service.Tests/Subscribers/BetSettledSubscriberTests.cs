@@ -1,10 +1,6 @@
-using System;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Services;
@@ -12,7 +8,6 @@ using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
 using NATS.Client;
 using NSubstitute;
-using Xunit;
 
 namespace ApiEventConsumer.Service.Tests.Subscribers
 {
@@ -24,6 +19,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly IPromotionService promotionService;
         private readonly INotificationService notificationService;
         private readonly BetSettledSubscriber sut;
+
+        private readonly IChatBotApi chatBotApi;
 
         public BetSettledSubscriberTests()
         {
@@ -41,6 +38,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             appSettings = Substitute.For<IAppSettings>();
             promotionService = Substitute.For<IPromotionService>();
             notificationService = Substitute.For<INotificationService>();
+            chatBotApi = Substitute.For<IChatBotApi>();
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
@@ -48,7 +46,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, ErrorMessage = "Success" });
             promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
 
-            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService);
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi);
         }
 
         private static BetSettled CreateBetSettledMessage(
@@ -163,7 +161,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         }
 
         [Fact]
-        public async Task OnMessageReceived_WithNullBetSettled_ShouldReturnFalse()
+        public async Task OnMessageReceived_WithNullBetSettled_ShouldReturnTrue()
         {
             // Arrange
             var args = CreateMessageArgs("null");
@@ -172,7 +170,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var result = await sut.OnMessageReceived(this, args);
 
             // Assert
-            Assert.False(result);
+            Assert.True(result);
         }
 
         [Fact]

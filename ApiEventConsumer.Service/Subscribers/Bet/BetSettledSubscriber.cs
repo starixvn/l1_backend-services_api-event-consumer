@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
@@ -13,7 +12,8 @@ namespace ApiEventConsumer.Subscribers.Bet
         ISentryClient sentryClient,
         IAppSettings appSettings,
         IPromotionService promotionService,
-        INotificationService notificationService) : IEventSubscriber
+        INotificationService notificationService,
+        IChatBotApi chatBotApi) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 3.0m;
 
@@ -21,7 +21,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         private readonly IAppSettings appSettings = appSettings;
         private readonly IPromotionService promotionService = promotionService;
         private readonly INotificationService notificationService = notificationService;
-
+        private readonly IChatBotApi chatBotApi = chatBotApi;
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
         public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
@@ -50,7 +50,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             try
             {
                 await HandlePromotionalTicket(betSettled);
-                HandleNormalTicket(betSettled);
+                HandleHighMultiplier(betSettled);
             }
             catch (Exception ex)
             {
@@ -84,7 +84,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
 
-        private void HandleNormalTicket(BetSettled betSettled)
+        private void HandleHighMultiplier(BetSettled betSettled)
         {
             try
             {
@@ -97,16 +97,15 @@ namespace ApiEventConsumer.Subscribers.Bet
 
                 if (multiplier > HighMultiplierThreshold)
                 {
-                    Console.WriteLine($"HIGH MULTIPLIER DETECTED: GameRoundId={betSettled.GameRoundId}, " +
-                                    $"GameTypeId={betSettled.GameTypeId}, TotalAmount={betSettled.TotalAmount}, " +
-                                    $"TotalWin={betSettled.TotalWin}, Multiplier={multiplier:F2}x, " +
-                                    $"PlayerId={betSettled.PlayerId}, SiteId={betSettled.SiteId}");
+                    var message = new StringBuilder($"HIGH MULTIPLIER DETECTED: PlayerId={betSettled.PlayerId}, GameTypeId={betSettled.GameTypeId}, GameRoundId={betSettled.GameRoundId}");
+                    message.Append($" ,TotalWin={betSettled.TotalWin}, Multiplier={multiplier:F2}x");
+
+                    chatBotApi.ForwardMessage(
+                                   appSettings.ChatBotApiSettings?.Token ?? string.Empty,
+                                   appSettings.ChatBotApiSettings?.ConversationIds?.HighMultiplier ?? string.Empty,
+                               message.ToString());
                     return;
                 }
-
-                Console.WriteLine($"Normal ticket processed: GameRoundId={betSettled.GameRoundId}, " +
-                                $"Multiplier={multiplier:F2}x, TotalAmount={betSettled.TotalAmount}, " +
-                                $"TotalWin={betSettled.TotalWin}");
             }
             catch (Exception ex)
             {
