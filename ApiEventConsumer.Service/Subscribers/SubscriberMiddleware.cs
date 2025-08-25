@@ -1,9 +1,10 @@
-﻿using ApiEventConsumer.Api._Shared.Helpers;
+﻿using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
 
@@ -17,7 +18,7 @@ namespace ApiEventConsumer.Service.Subscribers
             {
                 scope.SetTag("service_name", "ApiEventConsumer");
             });
-            
+
             services.AddMemoryCache();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
@@ -32,20 +33,29 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<ConfigurationServices>();
             services.AddSingleton<INatsConnectionService, NatsConnectionService>();
             services.AddSingleton<IHighStakeServices, HighStakeServices>();
+            services.AddHttpClient();
+            services.AddSingleton<IAuthService, AuthService>();
+            services.AddSingleton<IBaseApiService, BaseApiService>();
+            services.AddSingleton<IPromotionService, PromotionService>();
+            services.AddSingleton<INotificationService, NotificationService>();
 
             // Register all event subscribers
             services.AddSingleton<BetSubscriber>();
+            services.AddSingleton<BetSettledSubscriber>();
 
             // Register all subscribers as IEventSubscriber for polymorphic access
             services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSubscriber>());
+            services.AddSingleton<IEventSubscriber>(provider => provider.GetRequiredService<BetSettledSubscriber>());
 
             // Now build the provider and create the manager
             var serviceProvider = services.BuildServiceProvider();
             var natsService = serviceProvider.GetRequiredService<INatsConnectionService>();
             var betSubscriber = serviceProvider.GetRequiredService<BetSubscriber>();
-            
+            var betSettledSubscriber = serviceProvider.GetRequiredService<BetSettledSubscriber>();
+
             var manager = new SubscriberManager(natsService);
             manager.RegisterSubscriber(betSubscriber);
+            manager.RegisterSubscriber(betSettledSubscriber);
             manager.RegisterAllSubscribers();
 
             // Register the configured manager

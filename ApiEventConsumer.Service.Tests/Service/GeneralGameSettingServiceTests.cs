@@ -1,5 +1,5 @@
 ﻿using FluentAssertions;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
 using NSubstitute;
@@ -78,7 +78,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             const int gameId = 1;
             const string displayName = "Custom Display Name";
             const string name = "KenoMatch1";
-            
+
             SetupLocalGameConfig(gameId, displayName: displayName, name: name);
             var service = CreateService();
 
@@ -95,7 +95,7 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Arrange
             const int gameId = 1;
             const string name = "Keno Soccer";
-            
+
             SetupLocalGameConfig(gameId, displayName: null, name: name);
             var service = CreateService();
 
@@ -111,7 +111,7 @@ namespace ApiEventConsumer.Service.Tests.Service
         {
             // Arrange
             const int gameId = 1;
-            
+
             SetupLocalGameConfig(gameId, displayName: null, name: null);
             var service = CreateService();
 

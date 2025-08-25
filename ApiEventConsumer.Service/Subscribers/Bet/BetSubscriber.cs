@@ -1,32 +1,24 @@
-using System;
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
 using ApiEventConsumer.Core.Models.NatMessage;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using NATS.Client;
 
 namespace ApiEventConsumer.Subscribers.Bet
 {
-    public class BetSubscriber : IEventSubscriber
+    public class BetSubscriber(
+        ISentryClient sentryClient,
+        IAppSettings appSettings,
+        IHighStakeServices highStakeServices) : IEventSubscriber
     {
-        private readonly ISentryClient sentryClient;
-        private readonly IAppSettings appSettings;
-        private readonly IHighStakeServices highStakeServices;
-
-
-        public BetSubscriber(
-            ISentryClient sentryClient,
-            IHighStakeServices highStakeServices,
-            ConfigurationServices configurations)
-        {
-            this.sentryClient = sentryClient;
-            this.appSettings = configurations.AppSettings;
-            this.highStakeServices = highStakeServices;
-        }
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
+        private readonly IHighStakeServices highStakeServices = highStakeServices;
 
         public string SubjectName => appSettings?.StreamSettings?.BetMessages ?? string.Empty;
-        public void OnMessageReceived(object sender, MsgHandlerEventArgs args)
+
+        public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
         {
             try
             {
@@ -34,18 +26,18 @@ namespace ApiEventConsumer.Subscribers.Bet
                 var betCreated = JsonSerializer.Deserialize<BetCreated>(message);
                 var systemType = appSettings.SystemType ?? string.Empty;
 
-                if (betCreated != null && (double)betCreated.Amount >= appSettings.HighStake)
+                if (betCreated != null)
                 {
-                    // Use Task.Run to handle async operation in void method
-                    Task.Run(async () => {
-                        await highStakeServices.NotifyHighStake(betCreated, systemType);
-                    });
+                    await highStakeServices.NotifyHighStake(betCreated, systemType);
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+                return true;
             }
         }
     }
-} 
+}

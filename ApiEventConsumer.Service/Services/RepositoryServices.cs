@@ -3,7 +3,7 @@ using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
 using ApiEventConsumer.Database;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public class RepositoryServices
     {

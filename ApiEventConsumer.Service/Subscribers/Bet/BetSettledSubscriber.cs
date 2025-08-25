@@ -1,0 +1,155 @@
+using System.Text;
+using System.Text.Json;
+using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Core.Models.NatMessage;
+using ApiEventConsumer.Core.Models.Promotion;
+using ApiEventConsumer.Services;
+using NATS.Client;
+
+namespace ApiEventConsumer.Subscribers.Bet
+{
+    public class BetSettledSubscriber(
+        ISentryClient sentryClient,
+        IAppSettings appSettings,
+        IPromotionService promotionService,
+        INotificationService notificationService,
+        IChatBotApi chatBotApi) : IEventSubscriber
+    {
+        private const decimal HighMultiplierThreshold = 3.0m;
+
+        private readonly ISentryClient sentryClient = sentryClient;
+        private readonly IAppSettings appSettings = appSettings;
+        private readonly IPromotionService promotionService = promotionService;
+        private readonly INotificationService notificationService = notificationService;
+        private readonly IChatBotApi chatBotApi = chatBotApi;
+        public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
+
+        public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
+        {
+            try
+            {
+                var message = Encoding.UTF8.GetString(args.Message.Data);
+                var betSettled = JsonSerializer.Deserialize<BetSettled>(message);
+
+                if (betSettled != null)
+                {
+                    await ProcessBetSettled(betSettled);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                return false;
+            }
+        }
+
+        private async Task ProcessBetSettled(BetSettled betSettled)
+        {
+            try
+            {
+                await HandlePromotionalTicket(betSettled);
+                HandleHighMultiplier(betSettled);
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task HandlePromotionalTicket(BetSettled betSettled)
+        {
+            try
+            {
+                var request = new UpdateTotalTurnoverRequest
+                {
+                    PlayerId = betSettled.PlayerId?.ToString() ?? string.Empty,
+                    OperatorId = betSettled.OperatorId ?? string.Empty,
+                    SiteName = betSettled.SiteName ?? string.Empty,
+                    BetAmount = betSettled.ValidBetAmount,
+                    GameId = betSettled.GameTypeId
+                };
+
+                var response = await promotionService.UpdateTotalTurnoverAsync(request);
+
+                if (string.IsNullOrEmpty(response.ErrorCode))
+                {
+                    await NotifyProgress(betSettled, response);
+                }
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+
+        private void HandleHighMultiplier(BetSettled betSettled)
+        {
+            try
+            {
+                if (betSettled.TotalAmount <= 0 || betSettled.TotalWin < betSettled.TotalAmount * HighMultiplierThreshold)
+                {
+                    return;
+                }
+
+                var multiplier = betSettled.TotalWin / betSettled.TotalAmount;
+
+                if (multiplier > HighMultiplierThreshold)
+                {
+                    var message = new StringBuilder($"HIGH MULTIPLIER DETECTED: PlayerId={betSettled.PlayerId}, GameTypeId={betSettled.GameTypeId}, GameRoundId={betSettled.GameRoundId}");
+                    message.Append($" ,TotalWin={betSettled.TotalWin}, Multiplier={multiplier:F2}x");
+
+                    chatBotApi.ForwardMessage(
+                                   appSettings.ChatBotApiSettings?.Token ?? string.Empty,
+                                   appSettings.ChatBotApiSettings?.ConversationIds?.HighMultiplier ?? string.Empty,
+                               message.ToString());
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task NotifyProgress(BetSettled betSettled, UpdateTotalTurnoverResponse response)
+        {
+            try
+            {
+                // Validate required fields
+                var playerId = betSettled.PlayerId?.ToString() ?? string.Empty;
+                var operatorId = betSettled.OperatorId ?? string.Empty;
+                var siteName = betSettled.SiteName ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(playerId) ||
+                    string.IsNullOrWhiteSpace(operatorId) ||
+                    string.IsNullOrWhiteSpace(siteName))
+                {
+                    sentryClient.CaptureMessage($"Missing required fields for notification: PlayerId={playerId}, OperatorId={operatorId}, SiteName={siteName}");
+                    return;
+                }
+
+                var notificationRequest = new PromotionProgressRequest
+                {
+                    PlayerId = playerId,
+                    OperatorId = operatorId,
+                    SiteName = siteName,
+                    TotalTO = response.TotalTurnover,
+                    MinTO = response.MinRequiredTurnover,
+                    RemainTO = response.RemainingTO,
+                    Progress = response.ProgressPercentage,
+                    CanClaim = response.CanClaim,
+                    Win = response.TotalWinAmount,
+                    Expire = response.ClaimExpirationDate
+                };
+
+                await notificationService.SendPromotionProgressAsync(notificationRequest);
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+            }
+        }
+    }
+}

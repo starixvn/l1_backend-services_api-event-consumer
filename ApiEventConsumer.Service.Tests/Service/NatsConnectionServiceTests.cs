@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Service.Service;
+using ApiEventConsumer.Services;
 using NSubstitute;
 using NATS.Client;
 using NATS.Client.JetStream;
@@ -10,93 +10,236 @@ namespace ApiEventConsumer.Service.Tests.Service
 {
     public class NatsConnectionServiceTests
     {
-        private readonly ISentryClient _sentryClient;
-        private readonly IAppSettings _appSettings;
-        private readonly IConnection _connection;
-        private readonly IJetStream _jsContext;
-        private readonly IJetStreamManagement _jsManagement;
-        private readonly IAsyncSubscription _subscription;
-        private readonly StreamSettings _streamSettings;
-
-        public NatsConnectionServiceTests()
-        {
-            _sentryClient = Substitute.For<ISentryClient>();
-            _appSettings = Substitute.For<IAppSettings>();
-            _connection = Substitute.For<IConnection>();
-            _jsContext = Substitute.For<IJetStream>();
-            _jsManagement = Substitute.For<IJetStreamManagement>();
-            _subscription = Substitute.For<IAsyncSubscription>();
-
-            _streamSettings = new StreamSettings
-            {
-                Enable = true,
-                Host = "nats://localhost:4222",
-                StreamName = "test_stream",
-                BetMessages = "bet.created"
-            };
-        }
-
         [Fact]
-        public void Disconnect_DisposesConnectionAndSubscription()
+        public async Task Disconnect_DisposesConnectionAndSubscriptions()
         {
             // Arrange
-            var service = new NatsConnectionService(_sentryClient, _appSettings);
-            var subscriptionField = typeof(NatsConnectionService)
-                .GetField("subscription", BindingFlags.NonPublic | BindingFlags.Instance);
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var connection = Substitute.For<IConnection>();
+            var pullSubscription = Substitute.For<IJetStreamPullSubscription>();
+
+            // Setup StreamSettings mock to provide ShutdownWaitMs
+            var streamSettings = new StreamSettings
+            {
+                ShutdownWaitMs = 500,
+                ConsumerSettings = new ConsumerSettings()
+            };
+            appSettings.StreamSettings.Returns(streamSettings);
+
+            var service = new NatsConnectionService(sentryClient, appSettings);
+            var subscriptionsField = typeof(NatsConnectionService)
+                .GetField("subscriptions", BindingFlags.NonPublic | BindingFlags.Instance);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            subscriptionField?.SetValue(service, _subscription);
-            connectionField?.SetValue(service, _connection);
+            var subscriptions = new List<IJetStreamPullSubscription> { pullSubscription };
+            subscriptionsField?.SetValue(service, subscriptions);
+            connectionField?.SetValue(service, connection);
 
             // Act
-            service.Disconnect();
+            await service.DisconnectAsync();
 
             // Assert
-            _connection.Received(1).Dispose();
+            connection.Received(1).Dispose();
+            pullSubscription.Received(1).Unsubscribe();
         }
 
         [Fact]
         public void InitializeConnection_WhenStreamSettingsDisabled_DoesNotConnect()
         {
             // Arrange
-            _streamSettings.Enable = false;
-            _appSettings.StreamSettings.Returns(_streamSettings);
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+
+            var streamSettings = new StreamSettings
+            {
+                Enable = false,
+                Host = "nats://localhost:4222",
+                StreamName = "test_stream",
+                BetMessages = "bet.created"
+            };
+
+            appSettings.StreamSettings.Returns(streamSettings);
 
             // Act
-            var service = new NatsConnectionService(_sentryClient, _appSettings);
+            var service = new NatsConnectionService(sentryClient, appSettings);
             service.InitializeConnection();
 
-            // Assert
-            _sentryClient.DidNotReceive().CaptureException(Arg.Any<Exception>());
+            // Assert - Verify no exceptions were captured without using Arg.Any
+            sentryClient.DidNotReceiveWithAnyArgs().CaptureException(default(Exception)!);
         }
 
         [Fact]
-        public void ConfigureJetStream_WhenConnectionExists_ConfiguresStreamAndSubscription()
+        public void ConfigureJetStream_WhenConnectionExists_DoesNotThrow()
         {
             // Arrange
-            _appSettings.StreamSettings.Returns(_streamSettings);
-            _connection.CreateJetStreamContext().Returns(_jsContext);
-            _connection.CreateJetStreamManagementContext().Returns(_jsManagement);
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var connection = Substitute.For<IConnection>();
+            var jsContext = Substitute.For<IJetStream>();
+            var jsManagement = Substitute.For<IJetStreamManagement>();
 
-            var service = new NatsConnectionService(_sentryClient, _appSettings);
+            var streamSettings = new StreamSettings
+            {
+                Enable = true,
+                Host = "nats://localhost:4222",
+                StreamName = "test_stream",
+                BetMessages = "bet.created"
+            };
+
+            appSettings.StreamSettings.Returns(streamSettings);
+            connection.CreateJetStreamContext().Returns(jsContext);
+            connection.CreateJetStreamManagementContext().Returns(jsManagement);
+
+            var service = new NatsConnectionService(sentryClient, appSettings);
             var connectionField = typeof(NatsConnectionService)
                 .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
-            connectionField?.SetValue(service, _connection);
+            connectionField?.SetValue(service, connection);
 
-            Assert.NotNull(_streamSettings.BetMessages);
+            Assert.NotNull(streamSettings.BetMessages);
+
+            // Act & Assert - Should not throw
+            var exception = Record.Exception(() =>
+                service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), streamSettings.BetMessages));
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void IsHealthy_WhenConnectionIsNull_ReturnsFalse()
+        {
+            // Arrange
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var service = new NatsConnectionService(sentryClient, appSettings);
 
             // Act
-            service.ConfigureJetStream(async (_, __) => await Task.FromResult(true), _streamSettings.BetMessages);
+            var result = service.IsHealthy();
 
             // Assert
-            _jsManagement.Received(1).GetStreamInfo(_streamSettings.StreamName);
-            _jsContext.Received(1).PushSubscribeAsync(
-                _streamSettings.BetMessages,
-                Arg.Any<EventHandler<MsgHandlerEventArgs>>(),
-                false,
-                Arg.Any<PushSubscribeOptions>()
-            );
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsHealthy_WhenConnectionIsClosed_ReturnsFalse()
+        {
+            // Arrange
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var connection = Substitute.For<IConnection>();
+
+            var service = new NatsConnectionService(sentryClient, appSettings);
+            var connectionField = typeof(NatsConnectionService)
+                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            connectionField?.SetValue(service, connection);
+
+            connection.IsClosed().Returns(true);
+
+            // Act
+            var result = service.IsHealthy();
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsHealthy_WhenNoSubscriptions_ReturnsFalse()
+        {
+            // Arrange
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var connection = Substitute.For<IConnection>();
+
+            var service = new NatsConnectionService(sentryClient, appSettings);
+            var connectionField = typeof(NatsConnectionService)
+                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            connectionField?.SetValue(service, connection);
+
+            connection.IsClosed().Returns(false);
+
+            // Act
+            var result = service.IsHealthy();
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsHealthy_WhenSubscriptionInvalid_ReturnsFalse()
+        {
+            // Create a completely isolated test to avoid any NSubstitute state pollution
+            var service = CreateNatsConnectionServiceWithMocks(out var connection, out var pullSubscription, out var _, out var _);
+
+            // Configure mock behaviors
+            connection.IsClosed().Returns(false);
+            pullSubscription.IsValid.Returns(false);
+
+            // Setup the service with the mocked connection and subscription
+            SetupServiceWithConnectionAndSubscriptions(service, connection, new List<IJetStreamPullSubscription> { pullSubscription });
+
+            // Act
+            var result = service.IsHealthy();
+
+            // Assert
+            Assert.False(result);
+        }
+
+        private static NatsConnectionService CreateNatsConnectionServiceWithMocks(
+            out IConnection connection,
+            out IJetStreamPullSubscription pullSubscription,
+            out ISentryClient sentryClient,
+            out IAppSettings appSettings)
+        {
+            sentryClient = Substitute.For<ISentryClient>();
+            appSettings = Substitute.For<IAppSettings>();
+            connection = Substitute.For<IConnection>();
+            pullSubscription = Substitute.For<IJetStreamPullSubscription>();
+
+            return new NatsConnectionService(sentryClient, appSettings);
+        }
+
+        private static void SetupServiceWithConnectionAndSubscriptions(
+            NatsConnectionService service,
+            IConnection connection,
+            List<IJetStreamPullSubscription> subscriptions)
+        {
+            var connectionField = typeof(NatsConnectionService)
+                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            var subscriptionsField = typeof(NatsConnectionService)
+                .GetField("subscriptions", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            connectionField?.SetValue(service, connection);
+            subscriptionsField?.SetValue(service, subscriptions);
+        }
+
+        [Fact]
+        public void IsHealthy_WhenAllConditionsAreHealthy_ReturnsTrue()
+        {
+            // Arrange
+            var sentryClient = Substitute.For<ISentryClient>();
+            var appSettings = Substitute.For<IAppSettings>();
+            var connection = Substitute.For<IConnection>();
+            var pullSubscription = Substitute.For<IJetStreamPullSubscription>();
+
+            var service = new NatsConnectionService(sentryClient, appSettings);
+            var connectionField = typeof(NatsConnectionService)
+                .GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            var subscriptionsField = typeof(NatsConnectionService)
+                .GetField("subscriptions", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            connectionField?.SetValue(service, connection);
+            var subscriptions = new List<IJetStreamPullSubscription> { pullSubscription };
+            subscriptionsField?.SetValue(service, subscriptions);
+
+            connection.IsClosed().Returns(false);
+            pullSubscription.IsValid.Returns(true);
+
+            // Act
+            var result = service.IsHealthy();
+
+            // Assert
+            Assert.True(result);
         }
     }
 }

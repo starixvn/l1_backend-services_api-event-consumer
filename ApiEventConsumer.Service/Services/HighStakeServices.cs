@@ -13,14 +13,14 @@ using UAParser;
 using ApiEventConsumer.Database;
 using ApiEventConsumer.Core.Constants;
 
-namespace ApiEventConsumer.Service.Service
+namespace ApiEventConsumer.Services
 {
     public interface IHighStakeServices
     {
         Task<ChatBotResult> NotifyHighStake(BetCreated bet, string systemType);
     }
 
-    public class HighStakeServices: IHighStakeServices
+    public class HighStakeServices : IHighStakeServices
     {
         private readonly ISentryClient sentryClient;
         private readonly IAppSettings appSettings;

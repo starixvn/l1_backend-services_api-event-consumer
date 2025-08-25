@@ -34,7 +34,7 @@ alwaysApply: false
   ## Error Handling and Validation
   - Use exceptions for exceptional cases, not for control flow.
   - Implement proper error logging using built-in .NET logging or a third-party logger.
-  - Use Data Annotations or Fluent Validation for model validation.
+  - Use Fluent Validation for model validation.
   - Implement global exception handling middleware.
   - Return appropriate HTTP status codes and consistent error responses.
 
@@ -57,8 +57,8 @@ alwaysApply: false
   - Implement background tasks using IHostedService or BackgroundService.
 
   ## Testing
-  - Write unit tests using xUnit, NUnit, or MSTest.
-  - Use Moq or NSubstitute for mocking dependencies.
+  - Write unit tests using xUnit.
+  - Use NSubstitute for mocking dependencies.
   - Implement integration tests for API endpoints.
 
   ## Security

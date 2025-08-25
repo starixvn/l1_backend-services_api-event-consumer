@@ -2,8 +2,8 @@ using ApiEventConsumer._Shared.Middlewares;
 using TinyHealthCheck;
 using MongoDB.Driver;
 using ApiEventConsumer.Service.Subscribers;
-using Sentry.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
+using Sentry;
 
 namespace ApiEventConsumer
 {
@@ -13,8 +13,6 @@ namespace ApiEventConsumer
         public static async Task Main(string[] args)
         {
             IHost host = CreateHostBuilder(args).Build();
-            SentrySdk.CaptureMessage($"{DateTimeOffset.UtcNow} - Start ApiEventConsumer");
-
             await host.RunAsync();
         }
 
@@ -23,22 +21,19 @@ namespace ApiEventConsumer
                 .ConfigureServices((hostContext, services) =>
                 {
                     var appSettings = services.AddSettings(hostContext.Configuration);
-                    var sentrySetting = hostContext.Configuration.GetSection("Sentry");
 
-                    SentrySdk.Init(options =>
-                    {
-                        options.Dsn = sentrySetting.GetValue<string>("Dsn");
-                        options.SendDefaultPii = sentrySetting.GetValue<bool>("SendDefaultPii");
-                        options.TracesSampleRate = 1.0;
-                        options.UseOpenTelemetry();
-                    });
-
+                    // Register ISentryClient for dependency injection
                     services.AddSingleton<ISentryClient>(sp =>
                     {
+                        var sentrySection = hostContext.Configuration.GetSection("Sentry");
                         return new SentryClient(new SentryOptions
                         {
-                            Dsn = sentrySetting.GetValue<string>("Dsn"),
-                            Environment = hostContext.Configuration["ENV"]
+                            Dsn = sentrySection.GetValue<string>("Dsn"),
+                            Environment = sentrySection.GetValue<string>("Environment"),
+                            SendDefaultPii = sentrySection.GetValue<bool>("SendDefaultPii"),
+                            AttachStacktrace = sentrySection.GetValue<bool>("AttachStacktrace"),
+                            Debug = sentrySection.GetValue<bool>("Debug"),
+                            TracesSampleRate = sentrySection.GetValue<double>("TracesSampleRate")
                         });
                     });
 
@@ -51,20 +46,21 @@ namespace ApiEventConsumer
                         return config;
                     });
 
-                    if (appSettings.DatabaseSettings != null)
-                    {
-                        services.AddSingleton<IMongoClient>(sp =>
-                            new MongoClient(appSettings.DatabaseSettings.ConnectionString));
-                        services.AddSingleton<IMongoDatabase>(sp =>
-                            sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
-                    }
+                    services.AddSingleton<IMongoClient>(sp =>
+                        new MongoClient(appSettings.DatabaseSettings.ConnectionString));
+                    services.AddSingleton<IMongoDatabase>(sp =>
+                        sp.GetRequiredService<IMongoClient>().GetDatabase(appSettings.DatabaseSettings.DatabaseName));
                     services.AddChatBotServices(appSettings);
                     services.AddSubscriberServices(hostContext.Configuration);
                 })
                 .ConfigureLogging((hostingContext, logging) =>
                 {
                     logging.AddConfiguration(hostingContext.Configuration);
-                    logging.AddSentry(opt => opt.Environment = hostingContext.Configuration["ENV"]);
+                    var sentryDsn = hostingContext.Configuration.GetSection("Sentry:Dsn").Value;
+                    if (!string.IsNullOrEmpty(sentryDsn))
+                    {
+                        logging.AddSentry(sentryDsn);
+                    }
                 }).UseConsoleLifetime();
     }
 }
