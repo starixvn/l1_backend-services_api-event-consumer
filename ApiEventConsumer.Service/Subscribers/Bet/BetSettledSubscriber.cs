@@ -13,15 +13,17 @@ namespace ApiEventConsumer.Subscribers.Bet
         IAppSettings appSettings,
         IPromotionService promotionService,
         INotificationService notificationService,
-        IChatBotApi chatBotApi) : IEventSubscriber
+        IChatBotApi chatBotApi,
+        IGeneralGameSettingService generalGameSettingService) : IEventSubscriber
     {
-        private const decimal HighMultiplierThreshold = 3.0m;
+        private const decimal HighMultiplierThreshold = 10.0m;
 
         private readonly ISentryClient sentryClient = sentryClient;
         private readonly IAppSettings appSettings = appSettings;
         private readonly IPromotionService promotionService = promotionService;
         private readonly INotificationService notificationService = notificationService;
         private readonly IChatBotApi chatBotApi = chatBotApi;
+        private readonly IGeneralGameSettingService generalGameSettingServeice = generalGameSettingService;
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
         public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
@@ -50,7 +52,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             try
             {
                 await HandlePromotionalTicket(betSettled);
-                HandleHighMultiplier(betSettled);
+                await HandleHighMultiplier(betSettled);
             }
             catch (Exception ex)
             {
@@ -84,7 +86,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
 
-        private void HandleHighMultiplier(BetSettled betSettled)
+        private async Task HandleHighMultiplier(BetSettled betSettled)
         {
             try
             {
@@ -97,10 +99,13 @@ namespace ApiEventConsumer.Subscribers.Bet
 
                 if (multiplier > HighMultiplierThreshold)
                 {
-                    var message = new StringBuilder($"HIGH MULTIPLIER DETECTED: PlayerId={betSettled.PlayerId}, GameTypeId={betSettled.GameTypeId}, GameRoundId={betSettled.GameRoundId}");
+                    // Get the game name using our cached service
+                    var gameName = await generalGameSettingServeice.GetDisplayName(betSettled.GameTypeId);
+                    
+                    var message = new StringBuilder($"HIGH MULTIPLIER DETECTED: PlayerId={betSettled.PlayerId}, GameTypeId={betSettled.GameTypeId}, GameName={gameName}, GameRoundId={betSettled.GameRoundId}");
                     message.Append($" ,TotalWin={betSettled.TotalWin}, Multiplier={multiplier:F2}x");
 
-                    chatBotApi.ForwardMessage(
+                    await chatBotApi.ForwardMessage(
                                    appSettings.ChatBotApiSettings?.Token ?? string.Empty,
                                    appSettings.ChatBotApiSettings?.ConversationIds?.HighMultiplier ?? string.Empty,
                                message.ToString());

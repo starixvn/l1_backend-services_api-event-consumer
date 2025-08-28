@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Core.Models.ChatBot;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Services;
@@ -18,9 +19,9 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly IAppSettings appSettings;
         private readonly IPromotionService promotionService;
         private readonly INotificationService notificationService;
-        private readonly BetSettledSubscriber sut;
-
         private readonly IChatBotApi chatBotApi;
+        private readonly IGeneralGameSettingService generalGameSettingService;
+        private readonly BetSettledSubscriber sut;
 
         public BetSettledSubscriberTests()
         {
@@ -39,6 +40,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             promotionService = Substitute.For<IPromotionService>();
             notificationService = Substitute.For<INotificationService>();
             chatBotApi = Substitute.For<IChatBotApi>();
+            generalGameSettingService = Substitute.For<IGeneralGameSettingService>();
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
@@ -46,7 +48,22 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var defaultResponse = Task.FromResult(new UpdateTotalTurnoverResponse { Success = true, ErrorMessage = "Success" });
             promotionService.UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>()).Returns(defaultResponse);
 
-            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi);
+            // Setup default ChatBot API response
+            var chatBotResponse = Task.FromResult(new ChatBotResult { Success = true });
+            chatBotApi.ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns(chatBotResponse);
+
+            // Setup default ChatBot settings for high multiplier tests
+            var chatBotSettings = new ChatBotApiSettings
+            {
+                Token = "test-token",
+                ConversationIds = new ConversationIds
+                {
+                    HighMultiplier = "high-multiplier-conversation-id"
+                }
+            };
+            appSettings.ChatBotApiSettings.Returns(chatBotSettings);
+
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi, generalGameSettingService);
         }
 
         private static BetSettled CreateBetSettledMessage(
@@ -201,5 +218,225 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 r.SiteName == "test_site" &&
                 r.BetAmount == 95.75m));
         }
+
+        #region High Multiplier Tests
+
+        [Fact]
+        public async Task OnMessageReceived_WithHighMultiplier_ShouldIncludeGameNameInMessage()
+        {
+            // Arrange
+            const int gameTypeId = 5;
+            const string expectedGameName = "Keno Soccer";
+            var betSettled = CreateBetSettledMessage(
+                gameTypeId: gameTypeId,
+                totalAmount: 100m,
+                totalWin: 1500m // 15x multiplier (above 10x threshold)
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            generalGameSettingService.GetDisplayName(gameTypeId).Returns(Task.FromResult(expectedGameName));
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.Received(1).GetDisplayName(gameTypeId);
+            await chatBotApi.Received(1).ForwardMessage(
+                "test-token",
+                "high-multiplier-conversation-id",
+                Arg.Is<string>(msg => msg.Contains($"GameName={expectedGameName}")));
+        }
+
+        [Fact]
+        public async Task OnMessageReceived_WithHighMultiplier_ShouldFormatMessageCorrectly()
+        {
+            // Arrange
+            const int gameTypeId = 3;
+            const int playerId = 12345;
+            const int gameRoundId = 67890;
+            const string gameName = "Test Game";
+            const decimal totalAmount = 50m;
+            const decimal totalWin = 750m; // 15x multiplier
+
+            var betSettled = CreateBetSettledMessage(
+                gameTypeId: gameTypeId,
+                gameRoundId: gameRoundId,
+                playerId: playerId,
+                totalAmount: totalAmount,
+                totalWin: totalWin
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            generalGameSettingService.GetDisplayName(gameTypeId).Returns(Task.FromResult(gameName));
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await chatBotApi.Received(1).ForwardMessage(
+                "test-token",
+                "high-multiplier-conversation-id",
+                Arg.Is<string>(msg =>
+                    msg.Contains($"PlayerId={playerId}") &&
+                    msg.Contains($"GameTypeId={gameTypeId}") &&
+                    msg.Contains($"GameName={gameName}") &&
+                    msg.Contains($"GameRoundId={gameRoundId}") &&
+                    msg.Contains($"TotalWin={totalWin}") &&
+                    msg.Contains("Multiplier=15.00x")));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public async Task OnMessageReceived_WithHighMultiplierAndEmptyGameName_ShouldStillSendMessage(string? emptyGameName)
+        {
+            // Arrange
+            const int gameTypeId = 7;
+            var betSettled = CreateBetSettledMessage(
+                gameTypeId: gameTypeId,
+                totalAmount: 100m,
+                totalWin: 1200m // 12x multiplier
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            generalGameSettingService.GetDisplayName(gameTypeId).Returns(Task.FromResult(emptyGameName ?? string.Empty));
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.Received(1).GetDisplayName(gameTypeId);
+            await chatBotApi.Received(1).ForwardMessage(
+                "test-token", 
+                "high-multiplier-conversation-id", 
+                Arg.Any<string>());
+        }
+
+        [Theory]
+        [InlineData(100, 999)] // Just under 10x threshold (9.99x)
+        [InlineData(100, 1000)] // Exactly 10x threshold (should NOT trigger)
+        [InlineData(50, 450)] // 9x multiplier
+        public async Task OnMessageReceived_WithLowMultiplier_ShouldNotSendChatBotMessage(decimal totalAmount, decimal totalWin)
+        {
+            // Arrange
+            var betSettled = CreateBetSettledMessage(
+                totalAmount: totalAmount,
+                totalWin: totalWin
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.DidNotReceive().GetDisplayName(Arg.Any<int>());
+            await chatBotApi.DidNotReceive().ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        }
+
+        [Fact]
+        public async Task OnMessageReceived_WithHighMultiplierExactlyAtThreshold_ShouldNotSendMessage()
+        {
+            // Arrange - 10.0x multiplier exactly at threshold
+            var betSettled = CreateBetSettledMessage(
+                totalAmount: 100m,
+                totalWin: 1000m
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.DidNotReceive().GetDisplayName(Arg.Any<int>());
+            await chatBotApi.DidNotReceive().ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        }
+
+        [Fact]
+        public async Task OnMessageReceived_WithHighMultiplierJustAboveThreshold_ShouldSendMessage()
+        {
+            // Arrange - 10.01x multiplier just above threshold
+            const string gameName = "Lucky Game";
+            var betSettled = CreateBetSettledMessage(
+                gameTypeId: 8,
+                totalAmount: 100m,
+                totalWin: 1001m // 10.01x multiplier
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            generalGameSettingService.GetDisplayName(8).Returns(Task.FromResult(gameName));
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.Received(1).GetDisplayName(8);
+            await chatBotApi.Received(1).ForwardMessage(
+                "test-token",
+                "high-multiplier-conversation-id",
+                Arg.Is<string>(msg => msg.Contains("GameName=Lucky Game") && msg.Contains("Multiplier=10.01x")));
+        }
+
+        [Fact]
+        public async Task OnMessageReceived_WithZeroTotalAmount_ShouldNotSendMessage()
+        {
+            // Arrange - Zero total amount should prevent division and message sending
+            var betSettled = CreateBetSettledMessage(
+                totalAmount: 0m,
+                totalWin: 1500m
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert
+            Assert.True(result);
+            await generalGameSettingService.DidNotReceive().GetDisplayName(Arg.Any<int>());
+            await chatBotApi.DidNotReceive().ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        }
+
+        [Fact]
+        public async Task OnMessageReceived_WithGeneralGameSettingServiceException_ShouldContinueProcessing()
+        {
+            // Arrange
+            var betSettled = CreateBetSettledMessage(
+                gameTypeId: 9,
+                totalAmount: 100m,
+                totalWin: 2000m // 20x multiplier
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            generalGameSettingService.GetDisplayName(9).Returns(Task.FromException<string>(new Exception("Service unavailable")));
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert - Should still return true and handle the exception gracefully
+            Assert.True(result);
+            await generalGameSettingService.Received(1).GetDisplayName(9);
+            // ChatBot message should not be sent due to exception
+            await chatBotApi.DidNotReceive().ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        }
+
+        #endregion
+
+        #region Helper Methods for High Multiplier Tests
+
+        private static BetSettled CreateHighMultiplierBetSettled(int gameTypeId = 1, decimal totalAmount = 100m, decimal totalWin = 1500m)
+        {
+            return CreateBetSettledMessage(
+                gameTypeId: gameTypeId,
+                totalAmount: totalAmount,
+                totalWin: totalWin
+            );
+        }
+
+        #endregion
     }
 }
