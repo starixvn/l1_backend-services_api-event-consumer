@@ -102,8 +102,13 @@ namespace ApiEventConsumer.Subscribers.Bet
                     // Get the game name using our cached service
                     var gameName = await generalGameSettingServeice.GetDisplayName(betSettled.GameTypeId);
                     
-                    var message = new StringBuilder($"HIGH MULTIPLIER DETECTED: PlayerId={betSettled.PlayerId}, GameTypeId={betSettled.GameTypeId}, GameName={gameName}, GameRoundId={betSettled.GameRoundId}");
-                    message.Append($" ,TotalWin={betSettled.TotalWin}, Multiplier={multiplier:F2}x");
+                    var message = new StringBuilder("HIGH MULTIPLIER DETECTED:");
+                    message.Append($" PlayerId={betSettled.PlayerId}");
+                    message.Append($", GameTypeId={betSettled.GameTypeId}");
+                    message.Append($", GameName={gameName}");
+                    message.Append($", GameRoundId={betSettled.GameRoundId}");
+                    message.Append($", TotalWin={betSettled.TotalWin}");
+                    message.Append($", Multiplier={multiplier:F2}x");
 
                     await chatBotApi.ForwardMessage(
                                    appSettings.ChatBotApiSettings?.Token ?? string.Empty,

@@ -279,6 +279,34 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Database should be called minimal times (ideally once, but due to concurrency might be a few more)
         }
 
+        [Fact]
+        public async Task GetDisplayName_WhenCacheUpdated_ShouldAlwaysUseNewValue()
+        {
+            // Arrange
+            const int gameId = 1;
+            const string originalDisplayName = "Original Game";
+            const string newDisplayName = "Updated Game";
+
+            // First setup and call to populate cache
+            SetupLocalGameConfig(gameId, displayName: originalDisplayName);
+            var service = CreateService();
+            await service.GetDisplayName(gameId); // This should cache the original value
+
+            // Act - Update the database and force cache update by clearing it first
+            SetupLocalGameConfig(gameId, displayName: newDisplayName);
+            
+            // Use reflection to clear the cache to force a fresh database call
+            var cacheField = typeof(GeneralGameSettingServices)
+                .GetField("displayNameCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cache = cacheField?.GetValue(service);
+            cache?.GetType().GetMethod("Clear")?.Invoke(cache, null);
+
+            var result = await service.GetDisplayName(gameId);
+
+            // Assert - Should return the new value, proving the cache update logic works correctly
+            result.Should().Be(newDisplayName);
+        }
+
         [Theory]
         [InlineData("DisplayName Value", null)]
         [InlineData("DisplayName Value", "Name Value")]

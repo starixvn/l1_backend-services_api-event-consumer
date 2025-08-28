@@ -57,11 +57,15 @@ namespace ApiEventConsumer.Services
         private static string ExtractDisplayName(GameConfigEntity gameInfo)
         {
             if (!string.IsNullOrEmpty(gameInfo.DisplayName))
+            {
                 return gameInfo.DisplayName;
+            }
             
             if (!string.IsNullOrEmpty(gameInfo.Name))
+            {
                 return gameInfo.Name;
-            
+            }
+
             return string.Empty;
         }
 
@@ -72,7 +76,8 @@ namespace ApiEventConsumer.Services
                 DisplayName = displayName,
                 ExpirationTime = DateTime.UtcNow.Add(cacheExpiration)
             };
-            displayNameCache.AddOrUpdate(gameId, newCacheEntry, (key, oldValue) => newCacheEntry);
+
+            displayNameCache.AddOrUpdate(gameId, newCacheEntry, (_, _) => newCacheEntry);
         }
 
         private async Task<GameConfigEntity> GetGameConfigDirectOnKbtDatabase(int gameId)
