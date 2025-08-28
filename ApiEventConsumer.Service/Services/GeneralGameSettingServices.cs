@@ -1,5 +1,6 @@
 ﻿using ApiEventConsumer.Database;
 using ApiEventConsumer.Database.Entities;
+using System.Collections.Concurrent;
 
 namespace ApiEventConsumer.Services
 {
@@ -11,30 +12,72 @@ namespace ApiEventConsumer.Services
     public class GeneralGameSettingServices : IGeneralGameSettingService
     {
         private readonly IGenericRepository<GameConfigEntity> repository;
+        private readonly ConcurrentDictionary<int, CacheEntry> displayNameCache = new();
+        private readonly TimeSpan cacheExpiration = TimeSpan.FromSeconds(60);
 
         public GeneralGameSettingServices(IGenericRepository<GameConfigEntity> repository)
         {
             this.repository = repository;
         }
 
+        private class CacheEntry
+        {
+            public string DisplayName { get; set; } = string.Empty;
+            public DateTime ExpirationTime { get; set; }
+        }
+
         public async Task<string> GetDisplayName(int gameId)
         {
-            var gameInfo = await GetGameConfigDirectOnKbtDatabase(gameId);
+            if (TryGetFromCache(gameId, out var cachedDisplayName))
+            {
+                return cachedDisplayName;
+            }
 
-            string displayName;
+            var gameInfo = await GetGameConfigDirectOnKbtDatabase(gameId);
+            var displayName = ExtractDisplayName(gameInfo);
+            UpdateCache(gameId, displayName);
+
+            return displayName;
+        }
+
+        private bool TryGetFromCache(int gameId, out string displayName)
+        {
+            displayName = string.Empty;
+            
+            if (displayNameCache.TryGetValue(gameId, out var cachedEntry) && 
+                DateTime.UtcNow < cachedEntry.ExpirationTime)
+            {
+                displayName = cachedEntry.DisplayName;
+                return true;
+            }
+            
+            return false;
+        }
+
+        private static string ExtractDisplayName(GameConfigEntity gameInfo)
+        {
             if (!string.IsNullOrEmpty(gameInfo.DisplayName))
             {
-                displayName = gameInfo.DisplayName;
+                return gameInfo.DisplayName;
             }
-            else if (!string.IsNullOrEmpty(gameInfo.Name))
+            
+            if (!string.IsNullOrEmpty(gameInfo.Name))
             {
-                displayName = gameInfo.Name;
+                return gameInfo.Name;
             }
-            else
+
+            return string.Empty;
+        }
+
+        private void UpdateCache(int gameId, string displayName)
+        {
+            var newCacheEntry = new CacheEntry
             {
-                displayName = string.Empty;
-            }
-            return displayName;
+                DisplayName = displayName,
+                ExpirationTime = DateTime.UtcNow.Add(cacheExpiration)
+            };
+
+            displayNameCache.AddOrUpdate(gameId, newCacheEntry, (_, _) => newCacheEntry);
         }
 
         private async Task<GameConfigEntity> GetGameConfigDirectOnKbtDatabase(int gameId)
