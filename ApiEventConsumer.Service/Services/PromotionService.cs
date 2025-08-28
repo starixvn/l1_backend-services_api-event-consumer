@@ -41,8 +41,6 @@ namespace ApiEventConsumer.Services
             }
             catch (Exception ex)
             {
-                sentryClient.CaptureException(ex);
-
                 return new UpdateTotalTurnoverResponse
                 {
                     Success = false,

@@ -128,7 +128,6 @@ namespace ApiEventConsumer.Service.Tests.Service
             Assert.False(result.Success);
             Assert.Contains("Exception: Network error", result.ErrorMessage);
             Assert.Equal("EXCEPTION", result.ErrorCode);
-            _sentryClient.Received(1).CaptureException(Arg.Any<Exception>());
         }
 
         [Fact]
