@@ -24,7 +24,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly IChatBotApi chatBotApi;
         private readonly IGeneralGameSettingService generalGameSettingService;
         private readonly ISharedCacheService sharedCache;
-        private readonly ILogger<BetSettledSubscriber> logger;
         private readonly BetSettledSubscriber sut;
 
         public BetSettledSubscriberTests()
@@ -211,6 +210,22 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                 siteName: "test_site"
             );
             var args = CreateMessageArgs(betSettled);
+
+            // Setup cache to return eligible promotions
+            var eligiblePromotions = new List<Promotion>
+            {
+                new Promotion
+                {
+                    Name = "Test Promotion",
+                    OperatorId = "op_456",
+                    StartDate = DateTime.UtcNow.AddDays(-1),
+                    ClaimExpirationDate = DateTime.UtcNow.AddDays(1),
+                    GameIds = [2], // Match the default gameTypeId
+                    OfferedSiteNames = [], // Empty means all sites
+                    OfferedPlayerIds = [] // Empty means all players
+                }
+            };
+            sharedCache.Get<List<Promotion>>(Arg.Any<string>()).Returns(eligiblePromotions);
 
             // Act
             var result = await sut.OnMessageReceived(this, args);
