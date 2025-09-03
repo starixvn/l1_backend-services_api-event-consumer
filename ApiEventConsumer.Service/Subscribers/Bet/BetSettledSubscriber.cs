@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Services;
@@ -14,16 +15,20 @@ namespace ApiEventConsumer.Subscribers.Bet
         IPromotionService promotionService,
         INotificationService notificationService,
         IChatBotApi chatBotApi,
-        IGeneralGameSettingService generalGameSettingService) : IEventSubscriber
+        IGeneralGameSettingService generalGameSettingService,
+        ISharedCacheService sharedCache,
+        ILogger<BetSettledSubscriber> logger) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 10.0m;
 
         private readonly ISentryClient sentryClient = sentryClient;
+        private readonly ILogger<BetSettledSubscriber> logger = logger;
         private readonly IAppSettings appSettings = appSettings;
         private readonly IPromotionService promotionService = promotionService;
         private readonly INotificationService notificationService = notificationService;
         private readonly IChatBotApi chatBotApi = chatBotApi;
         private readonly IGeneralGameSettingService generalGameSettingServeice = generalGameSettingService;
+        private readonly ISharedCacheService sharedCache = sharedCache;
         public string SubjectName => appSettings?.StreamSettings?.BetSettledMessages ?? string.Empty;
 
         public async Task<bool> OnMessageReceived(object? sender, MsgHandlerEventArgs args)
@@ -64,6 +69,13 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
+                // Check if ticket is eligible for any running promotions
+                if (!await IsTicketEligibleForPromotion(betSettled))
+                {
+                    // Skip processing if no eligible promotions found
+                    return;
+                }
+
                 var request = new UpdateTotalTurnoverRequest
                 {
                     PlayerId = betSettled.PlayerId?.ToString() ?? string.Empty,
@@ -83,6 +95,46 @@ namespace ApiEventConsumer.Subscribers.Bet
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
+            }
+        }
+
+        private async Task<bool> IsTicketEligibleForPromotion(BetSettled betSettled)
+        {
+            try
+            {
+                var cacheKey = PromotionCacheService.GetCacheKey();
+                // Try to get promotions from cache first
+                var cachedPromotions = sharedCache.Get<List<Promotion>>(cacheKey);
+
+                if (cachedPromotions == null || !cachedPromotions.Any())
+                {
+                    // If cache is empty, fallback to API call (this should rarely happen due to background service)
+                    var response = await promotionService.GetRunningPromotionsAsync();
+                    if (!response.Any())
+                    {
+                        return false; // No running promotions
+                    }
+                    cachedPromotions = response;
+                }
+
+                // Check if this ticket is eligible for any running promotion
+                var currentTime = DateTime.UtcNow;
+                var isEligible = cachedPromotions.Any(promotion => 
+                    promotion.StartDate <= currentTime && 
+                    promotion.ClaimExpirationDate >= currentTime &&
+                    promotion.OfferedSiteNames.Contains(betSettled.SiteName ?? string.Empty) &&
+                    promotion.OfferedPlayerIds.Contains(betSettled.PlayerId?.ToString() ?? string.Empty) &&
+                    promotion.GameIds.Contains(betSettled.GameTypeId) &&
+                    promotion.OperatorId == betSettled.OperatorId
+                );
+
+                return isEligible;
+            }
+            catch (Exception ex)
+            {
+                sentryClient.CaptureException(ex);
+                // If there's an error checking eligibility, process the ticket anyway (fail-safe approach)
+                return true;
             }
         }
 

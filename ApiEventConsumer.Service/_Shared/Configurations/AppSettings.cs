@@ -53,6 +53,7 @@
     {
         public string UpdateTotalTurnover { get; set; } = null!;
         public string HasBonusWin { get; set; } = null!;
+        public string GetRunningPromotions { get; set; } = null!;
     }
 
     public class DatabaseSettings

@@ -1,5 +1,4 @@
-﻿using ApiEventConsumer._Shared.Configurations;
-using ApiEventConsumer.Api._Shared.Helpers;
+﻿using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Database.Entities.Currencies;
 using ApiEventConsumer.Database.Entities.ExchangeRates;
 using ApiEventConsumer.Database.Entities;
@@ -20,6 +19,7 @@ namespace ApiEventConsumer.Service.Subscribers
             });
 
             services.AddMemoryCache();
+            services.AddSingleton<ISharedCacheService, SharedCacheService>();
             services.AddSingleton<IGenericRepository<UserSessionEntity>, MongoRepository<UserSessionEntity>>();
             services.AddSingleton<IGenericRepository<ExchangeRateEntity>, MongoRepository<ExchangeRateEntity>>();
             services.AddSingleton<IGenericRepository<CurrencyEntity>, MongoRepository<CurrencyEntity>>();
@@ -38,6 +38,9 @@ namespace ApiEventConsumer.Service.Subscribers
             services.AddSingleton<IBaseApiService, BaseApiService>();
             services.AddSingleton<IPromotionService, PromotionService>();
             services.AddSingleton<INotificationService, NotificationService>();
+
+            // Register background services
+            services.AddHostedService<PromotionCacheService>();
 
             // Register all event subscribers
             services.AddSingleton<BetSubscriber>();

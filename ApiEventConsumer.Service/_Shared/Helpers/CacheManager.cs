@@ -6,7 +6,8 @@ namespace ApiEventConsumer.Api._Shared.Helpers
     {
         ExchangeRate,
         Currencies,
-        User
+        User,
+        RunningPromotions
     }
 
     public interface ICacheManager
