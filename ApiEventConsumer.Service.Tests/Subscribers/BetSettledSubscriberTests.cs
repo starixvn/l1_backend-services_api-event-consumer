@@ -1,12 +1,14 @@
 using System.Text;
 using System.Text.Json;
 using ApiEventConsumer._Shared.Configurations;
+using ApiEventConsumer.Api._Shared.Helpers;
 using ApiEventConsumer.Core.Models.ChatBot;
 using ApiEventConsumer.Core.Models.NatMessage;
 using ApiEventConsumer.Core.Models.Promotion;
 using ApiEventConsumer.Services;
 using ApiEventConsumer.Subscribers;
 using ApiEventConsumer.Subscribers.Bet;
+using Microsoft.Extensions.Logging;
 using NATS.Client;
 using NSubstitute;
 
@@ -21,6 +23,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
         private readonly INotificationService notificationService;
         private readonly IChatBotApi chatBotApi;
         private readonly IGeneralGameSettingService generalGameSettingService;
+        private readonly ISharedCacheService sharedCache;
+        private readonly ILogger<BetSettledSubscriber> logger;
         private readonly BetSettledSubscriber sut;
 
         public BetSettledSubscriberTests()
@@ -41,6 +45,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             notificationService = Substitute.For<INotificationService>();
             chatBotApi = Substitute.For<IChatBotApi>();
             generalGameSettingService = Substitute.For<IGeneralGameSettingService>();
+            sharedCache = Substitute.For<ISharedCacheService>();
+            logger = Substitute.For<ILogger<BetSettledSubscriber>>();
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
@@ -63,7 +69,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             };
             appSettings.ChatBotApiSettings.Returns(chatBotSettings);
 
-            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi, generalGameSettingService);
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi, generalGameSettingService, sharedCache, logger);
         }
 
         private static BetSettled CreateBetSettledMessage(
