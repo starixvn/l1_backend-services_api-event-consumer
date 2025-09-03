@@ -69,10 +69,8 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                // Check if ticket is eligible for any running promotions
                 if (!await IsTicketEligibleForPromotion(betSettled))
                 {
-                    // Skip processing if no eligible promotions found
                     return;
                 }
 
@@ -102,7 +100,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                var cacheKey = PromotionCacheService.GetCacheKey();
+                var cacheKey = PromotionCacheService.GetCacheKeyRunningPromotions();
                 // Try to get promotions from cache first
                 var cachedPromotions = sharedCache.Get<List<Promotion>>(cacheKey);
 
@@ -133,8 +131,7 @@ namespace ApiEventConsumer.Subscribers.Bet
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
-                // If there's an error checking eligibility, process the ticket anyway (fail-safe approach)
-                return true;
+                return false;
             }
         }
 

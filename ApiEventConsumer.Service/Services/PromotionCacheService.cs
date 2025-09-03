@@ -31,7 +31,7 @@ namespace ApiEventConsumer.Services
             {
                 try
                 {
-                    await RefreshPromotionCache();
+                    await RefreshRunningPromotionCache();
                 }
                 catch (Exception ex)
                 {
@@ -43,7 +43,7 @@ namespace ApiEventConsumer.Services
             }
         }
 
-        private async Task RefreshPromotionCache()
+        private async Task RefreshRunningPromotionCache()
         {
             try
             {
@@ -62,7 +62,7 @@ namespace ApiEventConsumer.Services
             }
         }
 
-        public static string GetCacheKey()
+        public static string GetCacheKeyRunningPromotions()
         {
             return $"{CachedKeys.RunningPromotions}";
         }
