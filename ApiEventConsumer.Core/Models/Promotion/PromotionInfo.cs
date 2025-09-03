@@ -28,7 +28,7 @@ namespace ApiEventConsumer.Core.Models.Promotion
         public List<int> GameIds { get; set; } = [];
         public List<BetLevel> BetLevels { get; set; } = [];
         public List<CoinValue> CoinValues { get; set; } = [];
-        public bool IsGiftCode { get; set; } = false;
+        public bool IsGiftCode { get; set; }
         public decimal MinTurnoverMultiplier { get; set; } = 2.0m;
     }
 }

@@ -16,13 +16,11 @@ namespace ApiEventConsumer.Subscribers.Bet
         INotificationService notificationService,
         IChatBotApi chatBotApi,
         IGeneralGameSettingService generalGameSettingService,
-        ISharedCacheService sharedCache,
-        ILogger<BetSettledSubscriber> logger) : IEventSubscriber
+        ISharedCacheService sharedCache) : IEventSubscriber
     {
         private const decimal HighMultiplierThreshold = 10.0m;
 
         private readonly ISentryClient sentryClient = sentryClient;
-        private readonly ILogger<BetSettledSubscriber> logger = logger;
         private readonly IAppSettings appSettings = appSettings;
         private readonly IPromotionService promotionService = promotionService;
         private readonly INotificationService notificationService = notificationService;
@@ -100,39 +98,55 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                var cacheKey = PromotionCacheService.GetCacheKeyRunningPromotions();
-                // Try to get promotions from cache first
-                var cachedPromotions = sharedCache.Get<List<Promotion>>(cacheKey);
-
-                if (cachedPromotions == null || !cachedPromotions.Any())
+                var promotions = await GetActivePromotions();
+                if (promotions.Count == 0)
                 {
-                    // If cache is empty, fallback to API call (this should rarely happen due to background service)
-                    var response = await promotionService.GetRunningPromotionsAsync();
-                    if (!response.Any())
-                    {
-                        return false; // No running promotions
-                    }
-                    cachedPromotions = response;
+                    return false;
                 }
 
-                // Check if this ticket is eligible for any running promotion
                 var currentTime = DateTime.UtcNow;
-                var isEligible = cachedPromotions.Any(promotion => 
-                    promotion.StartDate <= currentTime && 
-                    promotion.ClaimExpirationDate >= currentTime &&
-                    promotion.OfferedSiteNames.Contains(betSettled.SiteName ?? string.Empty) &&
-                    promotion.OfferedPlayerIds.Contains(betSettled.PlayerId?.ToString() ?? string.Empty) &&
-                    promotion.GameIds.Contains(betSettled.GameTypeId) &&
-                    promotion.OperatorId == betSettled.OperatorId
-                );
-
-                return isEligible;
+                return promotions.Any(promotion => IsPromotionEligibleForTicket(promotion, betSettled, currentTime));
             }
             catch (Exception ex)
             {
                 sentryClient.CaptureException(ex);
                 return false;
             }
+        }
+
+        private async Task<List<Promotion>> GetActivePromotions()
+        {
+            var cacheKey = PromotionCacheService.GetCacheKeyRunningPromotions();
+            var cachedPromotions = sharedCache.Get<List<Promotion>>(cacheKey);
+
+            if (cachedPromotions?.Count > 0)
+            {
+                return cachedPromotions;
+            }
+
+            var response = await promotionService.GetRunningPromotionsAsync();
+            return response ?? [];
+        }
+
+        private static bool IsPromotionEligibleForTicket(Promotion promotion, BetSettled betSettled, DateTime currentTime)
+        {
+            var isTimeValid = promotion.StartDate <= currentTime && promotion.ClaimExpirationDate >= currentTime;
+            var isTargetingValid = IsEligibleForSite(promotion, betSettled.SiteName) && IsEligibleForPlayer(promotion, betSettled.PlayerId);
+            var isGameAndOperatorValid = promotion.GameIds.Contains(betSettled.GameTypeId) && promotion.OperatorId == betSettled.OperatorId;
+
+            return isTimeValid && isTargetingValid && isGameAndOperatorValid;
+        }
+
+        private static bool IsEligibleForSite(Promotion promotion, string? siteName)
+        {
+            return promotion.OfferedSiteNames.Count == 0 
+                || promotion.OfferedSiteNames.Contains(siteName ?? string.Empty);
+        }
+
+        private static bool IsEligibleForPlayer(Promotion promotion, object? playerId)
+        {
+            return promotion.OfferedPlayerIds.Count == 0 
+                || promotion.OfferedPlayerIds.Contains(playerId?.ToString() ?? string.Empty);
         }
 
         private async Task HandleHighMultiplier(BetSettled betSettled)

@@ -49,7 +49,7 @@ namespace ApiEventConsumer.Services
             {
                 var promotions = await promotionService.GetRunningPromotionsAsync();
 
-                if (promotions.Any())
+                if (promotions.Count > 0)
                 {
                     var cacheKey = $"{CachedKeys.RunningPromotions}";
                     sharedCache.Set(cacheKey, promotions, TimeSpan.FromMinutes(CacheExpirationInMinutes));

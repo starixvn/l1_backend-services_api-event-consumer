@@ -46,7 +46,6 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             chatBotApi = Substitute.For<IChatBotApi>();
             generalGameSettingService = Substitute.For<IGeneralGameSettingService>();
             sharedCache = Substitute.For<ISharedCacheService>();
-            logger = Substitute.For<ILogger<BetSettledSubscriber>>();
 
             appSettings.PromotionApiSettings.Returns(promotionApiSettings);
 
@@ -69,7 +68,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             };
             appSettings.ChatBotApiSettings.Returns(chatBotSettings);
 
-            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi, generalGameSettingService, sharedCache, logger);
+            sut = new BetSettledSubscriber(sentryClient, appSettings, promotionService, notificationService, chatBotApi, generalGameSettingService, sharedCache);
         }
 
         private static BetSettled CreateBetSettledMessage(
