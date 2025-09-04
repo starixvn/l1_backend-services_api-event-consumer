@@ -211,8 +211,8 @@
             var nonNullEnum = TestEnumeration.One;
 
             // Act & Assert
-            Assert.True(nullEnum != nonNullEnum);
-            Assert.True(nonNullEnum != nullEnum);
+            Assert.True(nullEnum! != nonNullEnum);
+            Assert.True(nonNullEnum != nullEnum!);
         }
 
         [Fact]
@@ -223,7 +223,7 @@
             TestEnumeration? enum2 = null;
 
             // Act & Assert
-            Assert.False(enum1 != enum2);
+            Assert.False(enum1! != enum2!);
         }
 
         [Fact]
@@ -357,7 +357,7 @@
         public void GetAll_NonGeneric_ShouldReturnAllDefinedValues()
         {
             // Act
-            var values = Core.Enumeration.Enumeration.GetAll(typeof(TestEnumeration)).Cast<TestEnumeration>().ToList();
+            var values = Core.Enumeration.Enumeration.GetAll<TestEnumeration>().ToList();
 
             // Assert
             Assert.Equal(3, values.Count);

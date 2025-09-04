@@ -141,8 +141,8 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             // Check if it's an extension method (first parameter has 'this' modifier)
             var firstParam = method.GetParameters().FirstOrDefault();
             Assert.NotNull(firstParam);
-            Assert.True(firstParam.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Any() 
-                       || method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Any());
+            Assert.True(firstParam.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Length > 0
+                       || method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Length > 0);
         }
 
         [Fact] 

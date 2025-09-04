@@ -43,11 +43,11 @@ namespace ApiEventConsumer.Service.Tests.Service
             // Act & Assert
             var method = typeof(GameUserServices).GetMethod("GetCharacterNameAsync");
             method.Should().NotBeNull();
-            method!.ReturnType.Should().Be(typeof(Task<string>));
+            method!.ReturnType.Should().Be<Task<string>>();
             
             var parameters = method.GetParameters();
             parameters.Should().HaveCount(1);
-            parameters[0].ParameterType.Should().Be(typeof(string));
+            parameters[0].ParameterType.Should().Be<string>();
             parameters[0].Name.Should().Be("memberId");
         }
 
@@ -73,8 +73,8 @@ namespace ApiEventConsumer.Service.Tests.Service
             var parameters = constructor.GetParameters();
             
             parameters.Should().HaveCount(2);
-            parameters[0].ParameterType.Should().Be(typeof(IGenericRepository<AccountInfoEntity>));
-            parameters[1].ParameterType.Should().Be(typeof(IGenericRepository<AccountEntity>));
+            parameters[0].ParameterType.Should().Be<IGenericRepository<AccountInfoEntity>>();
+            parameters[1].ParameterType.Should().Be<IGenericRepository<AccountEntity>>();
         }
 
         [Fact]

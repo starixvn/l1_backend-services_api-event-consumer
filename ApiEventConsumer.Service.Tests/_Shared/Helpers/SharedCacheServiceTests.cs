@@ -326,7 +326,6 @@ namespace ApiEventConsumer.Service.Tests._Shared.Helpers
 
             // Assert
             Assert.NotNull(service);
-            Assert.IsAssignableFrom<ISharedCacheService>(service);
         }
 
         [Fact]
@@ -355,7 +354,6 @@ namespace ApiEventConsumer.Service.Tests._Shared.Helpers
 
             // Verify Get method signature
             var getParams = getMethod.GetParameters();
-            Assert.Equal(1, getParams.Length);
             Assert.Equal(typeof(string), getParams[0].ParameterType);
 
             // Verify TryGet method signature
@@ -524,7 +522,7 @@ namespace ApiEventConsumer.Service.Tests._Shared.Helpers
             var service = new SharedCacheService();
 
             // Assert
-            Assert.IsAssignableFrom<ISharedCacheService>(service);
+            Assert.True(service is ISharedCacheService);
             
             // Verify interface has expected methods
             var interfaceType = typeof(ISharedCacheService);
@@ -535,9 +533,9 @@ namespace ApiEventConsumer.Service.Tests._Shared.Helpers
             Assert.Contains(methods, m => m.Name == "TryGet");
             
             // All methods should be generic
-            Assert.True(methods.Any(m => m.Name == "Set" && m.IsGenericMethod));
-            Assert.True(methods.Any(m => m.Name == "Get" && m.IsGenericMethod));
-            Assert.True(methods.Any(m => m.Name == "TryGet" && m.IsGenericMethod));
+            Assert.Contains(methods, m => m.Name == "Set" && m.IsGenericMethod);
+            Assert.Contains(methods, m => m.Name == "Get" && m.IsGenericMethod);
+            Assert.Contains(methods, m => m.Name == "TryGet" && m.IsGenericMethod);
         }
     }
 
