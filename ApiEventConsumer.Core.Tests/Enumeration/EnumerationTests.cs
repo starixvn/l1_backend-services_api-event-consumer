@@ -147,5 +147,225 @@
             // Act & Assert
             Assert.False(testEnum.Equals(anotherTestEnum));
         }
+
+        [Fact]
+        public void EqualityOperator_WithSameValues_ShouldReturnTrue()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.True(enum1 == enum2);
+        }
+
+        [Fact]
+        public void EqualityOperator_WithDifferentValues_ShouldReturnFalse()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.Two;
+
+            // Act & Assert
+            Assert.False(enum1 == enum2);
+        }
+
+        [Fact]
+        public void EqualityOperator_WithBothNull_ShouldReturnTrue()
+        {
+            // Arrange
+            TestEnumeration? enum1 = null;
+            TestEnumeration? enum2 = null;
+
+            // Act & Assert
+            Assert.True(enum1 == enum2);
+        }
+
+        [Fact]
+        public void InequalityOperator_WithSameValues_ShouldReturnFalse()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.False(enum1 != enum2);
+        }
+
+        [Fact]
+        public void InequalityOperator_WithDifferentValues_ShouldReturnTrue()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.Two;
+
+            // Act & Assert
+            Assert.True(enum1 != enum2);
+        }
+
+        [Fact]
+        public void InequalityOperator_WithOneNull_ShouldReturnTrue()
+        {
+            // Arrange
+            TestEnumeration? nullEnum = null;
+            var nonNullEnum = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.True(nullEnum != nonNullEnum);
+            Assert.True(nonNullEnum != nullEnum);
+        }
+
+        [Fact]
+        public void InequalityOperator_WithBothNull_ShouldReturnFalse()
+        {
+            // Arrange
+            TestEnumeration? enum1 = null;
+            TestEnumeration? enum2 = null;
+
+            // Act & Assert
+            Assert.False(enum1 != enum2);
+        }
+
+        [Fact]
+        public void Equals_WithSameInstance_ShouldReturnTrue()
+        {
+            // Arrange
+            var enumeration = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.True(enumeration.Equals(enumeration));
+        }
+
+        [Fact]
+        public void Equals_WithSameValues_ShouldReturnTrue()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.True(enum1.Equals(enum2));
+        }
+
+        [Fact]
+        public void Equals_WithDifferentValues_ShouldReturnFalse()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.Two;
+
+            // Act & Assert
+            Assert.False(enum1.Equals(enum2));
+        }
+
+        [Fact]
+        public void Equals_WithNullParameter_ShouldReturnFalse()
+        {
+            // Arrange
+            var enumeration = TestEnumeration.One;
+
+            // Act & Assert
+            Assert.False(enumeration.Equals(null));
+        }
+
+        [Fact]
+        public void GetHashCode_WithSameValues_ShouldReturnSameHashCode()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.One;
+
+            // Act
+            var hash1 = enum1.GetHashCode();
+            var hash2 = enum2.GetHashCode();
+
+            // Assert
+            Assert.Equal(hash1, hash2);
+        }
+
+        [Fact]
+        public void GetHashCode_WithDifferentValues_ShouldReturnDifferentHashCode()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.Two;
+
+            // Act
+            var hash1 = enum1.GetHashCode();
+            var hash2 = enum2.GetHashCode();
+
+            // Assert
+            Assert.NotEqual(hash1, hash2);
+        }
+
+        [Fact]
+        public void ToString_ShouldReturnDisplayName()
+        {
+            // Arrange
+            var enumeration = TestEnumeration.One;
+
+            // Act
+            var result = enumeration.ToString();
+
+            // Assert
+            Assert.Equal("One", result);
+        }
+
+        [Fact]
+        public void CompareTo_WithSameValue_ShouldReturnZero()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One;
+            var enum2 = TestEnumeration.One;
+
+            // Act
+            var result = enum1.CompareTo(enum2);
+
+            // Assert
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void CompareTo_WithSmallerValue_ShouldReturnNegative()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.One; // Value "1"
+            var enum2 = TestEnumeration.Two; // Value "2"
+
+            // Act
+            var result = enum1.CompareTo(enum2);
+
+            // Assert
+            Assert.True(result < 0);
+        }
+
+        [Fact]
+        public void CompareTo_WithLargerValue_ShouldReturnPositive()
+        {
+            // Arrange
+            var enum1 = TestEnumeration.Two; // Value "2"
+            var enum2 = TestEnumeration.One; // Value "1"
+
+            // Act
+            var result = enum1.CompareTo(enum2);
+
+            // Assert
+            Assert.True(result > 0);
+        }
+
+        [Fact]
+        public void GetAll_NonGeneric_ShouldReturnAllDefinedValues()
+        {
+            // Act
+            var values = Core.Enumeration.Enumeration.GetAll(typeof(TestEnumeration)).Cast<TestEnumeration>().ToList();
+
+            // Assert
+            Assert.Equal(3, values.Count);
+            Assert.Contains(values, v => v.Value == "1" && v.DisplayName == "One");
+            Assert.Contains(values, v => v.Value == "2" && v.DisplayName == "Two");
+            Assert.Contains(values, v => v.Value == "3" && v.DisplayName == "Three");
+        }
+
+        
     }
 }

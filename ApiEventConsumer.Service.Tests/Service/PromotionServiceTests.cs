@@ -10,7 +10,7 @@ namespace ApiEventConsumer.Service.Tests.Service
 {
     public class PromotionServiceTests
     {
-        private IAppSettings CreateMockAppSettings()
+        private static IAppSettings CreateMockAppSettings()
         {
             var appSettings = Substitute.For<IAppSettings>();
             var promotionApiSettings = new PromotionApiSettings
