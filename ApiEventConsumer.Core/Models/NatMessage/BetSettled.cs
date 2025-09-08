@@ -16,5 +16,6 @@ namespace ApiEventConsumer.Core.Models.NatMessage
         public string OperatorId { get; set; } = string.Empty;
         public string? SiteName { get; set; } = string.Empty;
         public DateTimeOffset TimeStamp { get; }
+        public decimal BaseTotalAmount { get; set; }
     }
 }

@@ -78,7 +78,8 @@ namespace ApiEventConsumer.Subscribers.Bet
                     OperatorId = betSettled.OperatorId ?? string.Empty,
                     SiteName = betSettled.SiteName ?? string.Empty,
                     BetAmount = betSettled.ValidBetAmount,
-                    GameId = betSettled.GameTypeId
+                    GameId = betSettled.GameTypeId,
+                    BaseBetAmount = betSettled.BaseTotalAmount
                 };
 
                 var response = await promotionService.UpdateTotalTurnoverAsync(request);
@@ -164,7 +165,7 @@ namespace ApiEventConsumer.Subscribers.Bet
                 {
                     // Get the game name using our cached service
                     var gameName = await generalGameSettingServeice.GetDisplayName(betSettled.GameTypeId);
-                    
+
                     var message = new StringBuilder("HIGH MULTIPLIER DETECTED:");
                     message.Append($" PlayerId={betSettled.PlayerId}");
                     message.Append($", GameTypeId={betSettled.GameTypeId}");
