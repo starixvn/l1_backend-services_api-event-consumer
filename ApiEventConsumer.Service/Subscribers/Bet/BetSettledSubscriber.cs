@@ -67,7 +67,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         {
             try
             {
-                if (!await IsTicketEligibleForPromotion(betSettled))
+                if (!IsTicketEligibleForPromotion(betSettled))
                 {
                     return;
                 }
@@ -95,18 +95,19 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
 
-        private async Task<bool> IsTicketEligibleForPromotion(BetSettled betSettled)
+        private bool IsTicketEligibleForPromotion(BetSettled betSettled)
         {
             try
             {
-                var promotions = await GetActivePromotions();
+                var promotions = GetActivePromotions();
                 if (promotions.Count == 0)
                 {
                     return false;
                 }
 
-                var currentTime = DateTime.UtcNow;
-                return promotions.Any(promotion => IsPromotionEligibleForTicket(promotion, betSettled, currentTime));
+                return promotions.Any(promotion =>
+                    IsPromotionEligibleForTicket(promotion, betSettled, DateTime.UtcNow)
+                );
             }
             catch (Exception ex)
             {
@@ -115,18 +116,11 @@ namespace ApiEventConsumer.Subscribers.Bet
             }
         }
 
-        private async Task<List<Promotion>> GetActivePromotions()
+        private List<Promotion> GetActivePromotions()
         {
             var cacheKey = PromotionCacheService.GetCacheKeyRunningPromotions();
             var cachedPromotions = sharedCache.Get<List<Promotion>>(cacheKey);
-
-            if (cachedPromotions?.Count > 0)
-            {
-                return cachedPromotions;
-            }
-
-            var response = await promotionService.GetRunningPromotionsAsync();
-            return response ?? [];
+            return cachedPromotions ?? [];
         }
 
         private static bool IsPromotionEligibleForTicket(Promotion promotion, BetSettled betSettled, DateTime currentTime)
@@ -140,13 +134,13 @@ namespace ApiEventConsumer.Subscribers.Bet
 
         private static bool IsEligibleForSite(Promotion promotion, string? siteName)
         {
-            return promotion.OfferedSiteNames.Count == 0 
+            return promotion.OfferedSiteNames.Count == 0
                 || promotion.OfferedSiteNames.Contains(siteName ?? string.Empty, StringComparer.OrdinalIgnoreCase);
         }
 
         private static bool IsEligibleForPlayer(Promotion promotion, object? playerId)
         {
-            return promotion.OfferedPlayerIds.Count == 0 
+            return promotion.OfferedPlayerIds.Count == 0
                 || promotion.OfferedPlayerIds.Contains(playerId?.ToString() ?? string.Empty);
         }
 
