@@ -444,6 +444,40 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             await chatBotApi.DidNotReceive().ForwardMessage(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         }
 
+        [Fact]
+        public async Task OnMessageReceived_WithDifferentCaseSiteName_ShouldProcessSuccessfully()
+        {
+            // Arrange - Test site name case-insensitive matching
+            var betSettled = CreateBetSettledMessage(
+                operatorId: "test-op",
+                siteName: "TestSite.COM"  // Mixed case in message
+            );
+            var args = CreateMessageArgs(betSettled);
+
+            // Setup promotion with different case site name
+            var promotions = new List<Promotion>
+            {
+                new Promotion
+                {
+                    Name = "Test Promotion",
+                    OperatorId = "test-op",
+                    StartDate = DateTime.UtcNow.AddDays(-1),
+                    ClaimExpirationDate = DateTime.UtcNow.AddDays(1),
+                    GameIds = [2], 
+                    OfferedSiteNames = ["testsite.com"], // Different case in promotion
+                    OfferedPlayerIds = []
+                }
+            };
+            sharedCache.Get<List<Promotion>>(Arg.Any<string>()).Returns(promotions);
+
+            // Act
+            var result = await sut.OnMessageReceived(this, args);
+
+            // Assert - Should process despite case difference  
+            Assert.True(result);
+            await promotionService.Received(1).UpdateTotalTurnoverAsync(Arg.Any<UpdateTotalTurnoverRequest>());
+        }
+
         #endregion
 
         #region Helper Methods for High Multiplier Tests

@@ -141,7 +141,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         private static bool IsEligibleForSite(Promotion promotion, string? siteName)
         {
             return promotion.OfferedSiteNames.Count == 0 
-                || promotion.OfferedSiteNames.Contains(siteName ?? string.Empty);
+                || promotion.OfferedSiteNames.Contains(siteName ?? string.Empty, StringComparer.OrdinalIgnoreCase);
         }
 
         private static bool IsEligibleForPlayer(Promotion promotion, object? playerId)
