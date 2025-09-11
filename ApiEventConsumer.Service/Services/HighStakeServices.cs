@@ -161,20 +161,39 @@ namespace ApiEventConsumer.Services
 
         public static string GetVersionName(Versions version, Dictionary<string, string> metadata, string systemType)
         {
+            var versionSuffix = GetVersionSuffix(version, systemType);
+            var modeSuffix = GetModeName(metadata);
+
+            return $"{versionSuffix}{modeSuffix}";
+        }
+
+        private static readonly Dictionary<Versions, string> VersionSuffixes = new()
+        {
+            { Versions.Mobi, "M" },
+            { Versions.Instant, "I" },
+            { Versions.App, "A" },
+            { Versions.Livepage, "L" },
+            { Versions.MobileDirect, "D" },
+            { Versions.TodayPage, "T" },
+            { Versions.LangLive, "LL" },
+            { Versions.OriginalGames, "O" }
+        };
+
+        private static string GetVersionSuffix(Versions version, string systemType)
+        {
             var systemPrefix = GetSystemPrefixName(systemType);
 
-            return version switch
-            {
-                Versions.Mobi => $"{systemPrefix}M",
-                Versions.Instant => $"{systemPrefix}I{GetModeName(metadata)}",
-                Versions.Cocos => $"{systemPrefix}{GetCocosVersionSuffix(systemType)}{GetModeName(metadata)}",
-                Versions.MegaKeno => $"{GetMegaKenoVersionSuffix(systemType)}{GetModeName(metadata)}",
-                Versions.App => $"{systemPrefix}A",
-                Versions.Livepage => $"{systemPrefix}L",
-                Versions.MobileDirect => $"{systemPrefix}D",
-                Versions.TodayPage => $"{systemPrefix}T",
-                _ => string.Empty,
-            };
+            if (version == Versions.Cocos){
+                return $"{systemPrefix}{GetCocosVersionSuffix(systemType)}";
+            }
+            
+            if (version == Versions.MegaKeno){
+                return GetMegaKenoVersionSuffix(systemType);   
+            }
+
+            return VersionSuffixes.TryGetValue(version, out var suffix) 
+                ? $"{systemPrefix}{suffix}" 
+                : string.Empty;
         }
 
         private static string GetModeName(Dictionary<string, string> metadata)

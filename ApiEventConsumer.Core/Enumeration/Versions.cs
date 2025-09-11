@@ -9,6 +9,8 @@ namespace ApiEventConsumer.Core.Enumeration
         App,
         Livepage,
         MobileDirect,
-        TodayPage
+        TodayPage,
+        LangLive,
+        OriginalGames
     }
 }
