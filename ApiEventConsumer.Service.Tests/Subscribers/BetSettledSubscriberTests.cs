@@ -250,7 +250,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var betSettled = CreateBetSettledMessage(
                 gameTypeId: gameTypeId,
                 totalAmount: 100m,
-                totalWin: 1500m // 15x multiplier (above 10x threshold)
+                totalWin: 15000m // 15x multiplier (above 10x threshold)
             );
             var args = CreateMessageArgs(betSettled);
 
@@ -277,7 +277,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             const int gameRoundId = 67890;
             const string gameName = "Test Game";
             const decimal totalAmount = 50m;
-            const decimal totalWin = 750m; // 15x multiplier
+            const decimal totalWin = 75000m; // 15x multiplier
 
             var betSettled = CreateBetSettledMessage(
                 gameTypeId: gameTypeId,
@@ -304,7 +304,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
                     msg.Contains($"GameName={gameName}") &&
                     msg.Contains($"GameRoundId={gameRoundId}") &&
                     msg.Contains($"TotalWin={totalWin}") &&
-                    msg.Contains("Multiplier=15.00x")));
+                    msg.Contains("Multiplier=1500.00x")));
         }
 
         [Theory]
@@ -317,7 +317,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var betSettled = CreateBetSettledMessage(
                 gameTypeId: gameTypeId,
                 totalAmount: 100m,
-                totalWin: 1200m // 12x multiplier
+                totalWin: 12000m // 12x multiplier
             );
             var args = CreateMessageArgs(betSettled);
 
@@ -384,7 +384,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var betSettled = CreateBetSettledMessage(
                 gameTypeId: 8,
                 totalAmount: 100m,
-                totalWin: 1001m // 10.01x multiplier
+                totalWin: 1000001m // 10.01x multiplier
             );
             var args = CreateMessageArgs(betSettled);
 
@@ -399,7 +399,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             await chatBotApi.Received(1).ForwardMessage(
                 "test-token",
                 "high-multiplier-conversation-id",
-                Arg.Is<string>(msg => msg.Contains("GameName=Lucky Game") && msg.Contains("Multiplier=10.01x")));
+                Arg.Is<string>(msg => msg.Contains("GameName=Lucky Game") && msg.Contains("Multiplier=10000.01x")));
         }
 
         [Fact]
@@ -428,7 +428,7 @@ namespace ApiEventConsumer.Service.Tests.Subscribers
             var betSettled = CreateBetSettledMessage(
                 gameTypeId: 9,
                 totalAmount: 100m,
-                totalWin: 2000m // 20x multiplier
+                totalWin: 20000m // 20x multiplier
             );
             var args = CreateMessageArgs(betSettled);
 

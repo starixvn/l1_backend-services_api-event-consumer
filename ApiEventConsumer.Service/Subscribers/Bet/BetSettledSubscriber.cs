@@ -18,7 +18,7 @@ namespace ApiEventConsumer.Subscribers.Bet
         IGeneralGameSettingService generalGameSettingService,
         ISharedCacheService sharedCache) : IEventSubscriber
     {
-        private const decimal HighMultiplierThreshold = 10.0m;
+        private const decimal HighMultiplierThreshold = 100.0m;
 
         private readonly ISentryClient sentryClient = sentryClient;
         private readonly IAppSettings appSettings = appSettings;
